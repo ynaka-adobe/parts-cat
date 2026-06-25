@@ -9,7 +9,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 536px;
+  height: 536px;
   padding: 48px 24px;
   overflow: hidden;
   color: var(--background-color);
@@ -73,7 +73,7 @@
 
 @media (width >= 900px) {
   .hero-banner {
-    min-height: 536px;
+    height: 536px;
     padding: 64px 32px;
   }
 }
