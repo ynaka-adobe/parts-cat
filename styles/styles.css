@@ -265,6 +265,13 @@ main .section.dark {
   padding: 48px 0;
 }
 
+main .section.black {
+  background-color: #000;
+  color: var(--background-color);
+  margin: 0;
+  padding: 18px 0;
+}
+
 main .section.dark h1,
 main .section.dark h2,
 main .section.dark h3,

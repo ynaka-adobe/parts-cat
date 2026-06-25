@@ -31,3 +31,75 @@
     order: unset;
   }
 }
+
+/* ── Black section value-props bar ── */
+.black .columns-container .columns-wrapper {
+  max-width: unset;
+  padding: 0;
+}
+
+.black .columns > div {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.black .columns > div > div {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 24px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #fff;
+  border-right: 1px solid #2a2a2a;
+  order: unset;
+}
+
+.black .columns > div > div:last-child {
+  border-right: none;
+}
+
+.black .columns > div > div::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  background-color: var(--brand-yellow, #ffcd11);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.black .columns > div > div:nth-child(1)::before {
+  mask-image: url('/icons/shield.svg');
+}
+
+.black .columns > div > div:nth-child(2)::before {
+  mask-image: url('/icons/tools.svg');
+}
+
+.black .columns > div > div:nth-child(3)::before {
+  mask-image: url('/icons/location.svg');
+}
+
+@media (width < 768px) {
+  .black .columns > div {
+    flex-direction: column;
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .black .columns > div > div {
+    border-right: none;
+    justify-content: flex-start;
+    padding: 0;
+  }
+}
