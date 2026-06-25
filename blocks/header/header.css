@@ -177,6 +177,19 @@ header nav .nav-app-grid button {
 
 header nav .nav-app-grid button:hover { color: var(--brand-yellow, #ffcd11); }
 
+/* ---------- Account Widget (replaces the Sign-in link) ---------- */
+header nav .nav-account-widget {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Ensure the widget's own dropdown/panel sits above other page content */
+header nav .nav-account-widget #cat-account {
+  position: relative;
+  z-index: 40;
+}
+
 /* ---------- Row 2: primary nav + account utility ---------- */
 header nav .nav-sections {
   grid-area: sections;

@@ -74,6 +74,55 @@ function buildAddEquipment() {
 }
 
 /**
+ * Replace the sign-in nav item with the CATAccount widget.
+ * Script is loaded lazily so it doesn't block the rest of the header.
+ */
+function mountAccountWidget(signInLi) {
+  const li = document.createElement('li');
+  li.className = 'nav-account-widget';
+  const container = document.createElement('div');
+  container.id = 'cat-account';
+  li.append(container);
+  signInLi.replaceWith(li);
+
+  const script = document.createElement('script');
+  script.src = 'https://cat-apps-sigma.vercel.app/widgets/cat-account.js';
+  script.addEventListener('load', () => {
+    let widget;
+
+    async function handleLogin(creds) {
+      await new Promise((r) => setTimeout(r, 600));
+      if (creds.password === 'wrong') {
+        widget.update({
+          user: null,
+          loginError: 'Invalid credentials. Please try again.',
+          onLogin: handleLogin,
+          onLogout: handleLogout,
+        });
+        return;
+      }
+      widget.update({
+        user: { name: creds.email.split('@')[0], email: creds.email },
+        onLogout: handleLogout,
+        onProfileClick: () => { window.location.href = '/en/catcorp/my-equipment'; },
+        onOrdersClick: () => { window.location.href = '/en/catcorp/orders'; },
+      });
+    }
+
+    function handleLogout() {
+      widget.update({ user: null, onLogin: handleLogin, onLogout: handleLogout });
+    }
+
+    widget = window.CATAccount.mount('#cat-account', {
+      user: null,
+      onLogin: handleLogin,
+      onLogout: handleLogout,
+    });
+  });
+  document.head.append(script);
+}
+
+/**
  * Build the icon-only app-grid (9-dot) launcher for the top utility row.
  */
 function buildAppGrid() {
@@ -152,6 +201,12 @@ export default async function decorate(block) {
   nav.setAttribute('aria-expanded', 'false');
   while (fragment.firstElementChild) nav.append(fragment.firstElementChild);
 
+  // decorateMain wraps plain content in .default-content-wrapper divs, but the
+  // header CSS/JS expect ul and p to sit directly inside each nav section div.
+  nav.querySelectorAll('.default-content-wrapper').forEach((wrapper) => {
+    wrapper.replaceWith(...wrapper.childNodes);
+  });
+
   // Section roles by source order: brand, primary nav, account utility, top utility.
   const classes = ['brand', 'sections', 'account', 'utility'];
   classes.forEach((c, i) => {
@@ -179,6 +234,10 @@ export default async function decorate(block) {
   // Top utility (Select Store / Sign in / Cart) + app-grid launcher.
   const navUtility = nav.querySelector('.nav-utility');
   decorateUtilityIcons(navUtility);
+  const signInLi = navUtility && [...navUtility.querySelectorAll('li')].find(
+    (li) => li.querySelector('a[href*="sign-in"]'),
+  );
+  if (signInLi) mountAccountWidget(signInLi);
   const utilityList = navUtility && navUtility.querySelector('ul');
   if (utilityList) utilityList.append(buildAppGrid());
 
