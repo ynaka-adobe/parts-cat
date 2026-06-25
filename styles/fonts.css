@@ -1,4 +1,6 @@
 /* stylelint-disable max-line-length */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Roboto+Condensed:wght@400;700&display=swap');
+
 @font-face {
   font-family: roboto-condensed;
   font-style: normal;
