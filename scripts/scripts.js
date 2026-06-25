@@ -362,6 +362,14 @@ async function loadEager(doc) {
   if (main) {
     decorateMain(main);
     doc.body.classList.add('appear');
+
+    // Prioritise the LCP image so the browser fetches it immediately.
+    const lcpImg = main.querySelector('.section:first-child img');
+    if (lcpImg) {
+      lcpImg.setAttribute('loading', 'eager');
+      lcpImg.setAttribute('fetchpriority', 'high');
+    }
+
     await loadSection(main.querySelector('.section'), waitForFirstImage);
   }
 
