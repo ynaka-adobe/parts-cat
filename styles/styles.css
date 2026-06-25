@@ -241,7 +241,7 @@ main > .section > div {
 }
 
 main > .section:first-of-type {
-  margin-top: 50px;
+  margin-top: 0;
 }
 
 @media (width >= 900px) {

@@ -67,3 +67,9 @@
   --nav-height: 80px;
   --border-radius: 4px;
 }
+
+@media (width >= 992px) {
+  :root {
+    --nav-height: 136px;
+  }
+}
