@@ -7,8 +7,8 @@
 
 :root {
   /* fonts */
-  --heading-font-family: "Roboto Condensed", "roboto-condensed-fallback", sans-serif;
-  --body-font-family: "Noto Sans", "roboto-fallback", arial, sans-serif;
+  --heading-font-family: "Roboto Condensed", sans-serif;
+  --body-font-family: roboto, arial, sans-serif;
 
   /* font weights */
   --font-weight-light: 300;
