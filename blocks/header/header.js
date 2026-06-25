@@ -181,6 +181,67 @@ function mountAccountWidget(signInLi, navWrapper) {
 }
 
 /**
+ * Replace the Select Store nav item with the CATSelectStore widget panel.
+ */
+function mountSelectStoreWidget(storeLi, navWrapper) {
+  const trigger = storeLi.querySelector('a');
+  if (trigger) {
+    trigger.removeAttribute('href');
+    trigger.setAttribute('role', 'button');
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+  storeLi.classList.add('nav-select-store-widget');
+
+  const panel = document.createElement('div');
+  panel.className = 'nav-select-store-panel';
+  panel.hidden = true;
+
+  const container = document.createElement('div');
+  container.id = 'cat-select-store';
+  panel.append(container);
+  navWrapper.append(panel);
+
+  function openPanel() {
+    panel.hidden = false;
+    trigger && trigger.setAttribute('aria-expanded', 'true');
+  }
+
+  function closePanel() {
+    panel.hidden = true;
+    trigger && trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  if (trigger) {
+    trigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      panel.hidden ? openPanel() : closePanel();
+    });
+    trigger.addEventListener('keydown', (e) => {
+      if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); panel.hidden ? openPanel() : closePanel(); }
+      if (e.code === 'Escape') closePanel();
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!storeLi.contains(e.target) && !panel.contains(e.target)) closePanel();
+  });
+
+  const script = document.createElement('script');
+  script.src = 'https://cat-apps-sigma.vercel.app/widgets/cat-select-store.js';
+  script.addEventListener('load', () => {
+    window.CATSelectStore.mount('#cat-select-store', {
+      onStoreSelect: (store) => {
+        if (trigger) trigger.querySelector('span:not(.nav-icon)').textContent = store.locationName || store.dealerName;
+        closePanel();
+      },
+      onClose: closePanel,
+    });
+  });
+  document.head.append(script);
+}
+
+/**
  * Build the icon-only app-grid (9-dot) launcher for the top utility row.
  */
 function buildAppGrid() {
@@ -298,6 +359,10 @@ export default async function decorate(block) {
     (li) => li.querySelector('a[href*="sign-in"]'),
   );
   if (signInLi) mountAccountWidget(signInLi, navWrapper);
+  const storeLi = navUtility && [...navUtility.querySelectorAll('li')].find(
+    (li) => li.querySelector('a[href*="store-locator"]'),
+  );
+  if (storeLi) mountSelectStoreWidget(storeLi, navWrapper);
   const utilityList = navUtility && navUtility.querySelector('ul');
   const appGridLi = buildAppGrid();
   if (utilityList) utilityList.append(appGridLi);

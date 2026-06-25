@@ -200,6 +200,26 @@ header .nav-account-panel[hidden] {
   display: none;
 }
 
+header nav .nav-select-store-widget a[role="button"] {
+  cursor: pointer;
+}
+
+header .nav-select-store-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  width: 420px;
+  max-width: 100vw;
+  background: #fff;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+}
+
+header .nav-select-store-panel[hidden] {
+  display: none;
+}
+
 /* ---------- Row 2: primary nav + account utility ---------- */
 header nav .nav-sections {
   grid-area: sections;
