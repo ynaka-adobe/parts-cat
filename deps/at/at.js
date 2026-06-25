@@ -14,7 +14,10 @@
  *
  * If `target-at-js` is omitted, a stub getOffers runs (empty offers) so local dev still works.
  */
-import { getMetadata } from '../../scripts/aem.js';
+/** @param {string} name */
+function getMeta(name) {
+  return document.head.querySelector(`meta[name="${name}"]`)?.content?.trim() || '';
+}
 
 /** @param {string} src */
 function assertAllowedScriptSrc(src) {
@@ -50,8 +53,8 @@ function installStub() {
 async function ensureRealAtJs() {
   if (window.adobe?.target?.getOffers) return;
 
-  const atJs = getMetadata('target-at-js')?.trim();
-  const visitor = getMetadata('target-visitor-js')?.trim();
+  const atJs = getMeta('target-at-js');
+  const visitor = getMeta('target-visitor-js');
 
   if (!atJs) {
     installStub();
