@@ -241,7 +241,7 @@ function autolinkModals(doc) {
  */
 function buildAutoBlocks(main) {
   try {
-    if (!main.querySelector('.hero')) buildHeroBlock(main);
+    if (!main.querySelector('.hero, .hero-banner')) buildHeroBlock(main);
     buildDynamicMediaImages(main);
   } catch (error) {
     // eslint-disable-next-line no-console
