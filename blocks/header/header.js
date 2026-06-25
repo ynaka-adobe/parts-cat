@@ -74,17 +74,75 @@ function buildAddEquipment() {
 }
 
 /**
+ * Load the CATGlobalMenu widget and wire it to every button in triggerBtns.
+ * The widget mounts its own container into <body> — no placeholder needed.
+ */
+function mountGlobalMenuWidget(triggerBtns) {
+  const script = document.createElement('script');
+  script.src = 'https://cat-apps-sigma.vercel.app/widgets/cat-global-menu.js';
+  script.addEventListener('load', () => {
+    const catMenu = window.CATGlobalMenu.mount({ onClose: () => {} });
+    triggerBtns.forEach((btn) => {
+      if (btn) btn.addEventListener('click', () => catMenu.open());
+    });
+  });
+  document.head.append(script);
+}
+
+/**
  * Replace the sign-in nav item with the CATAccount widget.
  * Script is loaded lazily so it doesn't block the rest of the header.
  */
-function mountAccountWidget(signInLi) {
-  const li = document.createElement('li');
-  li.className = 'nav-account-widget';
+function mountAccountWidget(signInLi, navWrapper) {
+  // Keep the existing sign-in anchor as the visible trigger; just strip its href
+  // so it no longer navigates and acts as a toggle button instead.
+  const trigger = signInLi.querySelector('a');
+  if (trigger) {
+    trigger.removeAttribute('href');
+    trigger.setAttribute('role', 'button');
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+  signInLi.classList.add('nav-account-widget');
+
+  // The panel lives on .nav-wrapper so `top: 100%` positions it directly
+  // below the full two-row header rather than cutting off behind the nav.
+  const panel = document.createElement('div');
+  panel.className = 'nav-account-panel';
+  panel.hidden = true;
+
   const container = document.createElement('div');
   container.id = 'cat-account';
-  li.append(container);
-  signInLi.replaceWith(li);
+  panel.append(container);
 
+  navWrapper.append(panel);
+
+  function openPanel() {
+    panel.hidden = false;
+    trigger && trigger.setAttribute('aria-expanded', 'true');
+  }
+
+  function closePanel() {
+    panel.hidden = true;
+    trigger && trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  if (trigger) {
+    trigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      panel.hidden ? openPanel() : closePanel();
+    });
+    trigger.addEventListener('keydown', (e) => {
+      if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); panel.hidden ? openPanel() : closePanel(); }
+      if (e.code === 'Escape') closePanel();
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!signInLi.contains(e.target) && !panel.contains(e.target)) closePanel();
+  });
+
+  // Load widget script and mount once into the panel container
   const script = document.createElement('script');
   script.src = 'https://cat-apps-sigma.vercel.app/widgets/cat-account.js';
   script.addEventListener('load', () => {
@@ -196,6 +254,8 @@ export default async function decorate(block) {
   const fragment = await loadFragment(navPath);
 
   block.textContent = '';
+  const navWrapper = document.createElement('div');
+  navWrapper.className = 'nav-wrapper';
   const nav = document.createElement('nav');
   nav.id = 'nav';
   nav.setAttribute('aria-expanded', 'false');
@@ -237,9 +297,11 @@ export default async function decorate(block) {
   const signInLi = navUtility && [...navUtility.querySelectorAll('li')].find(
     (li) => li.querySelector('a[href*="sign-in"]'),
   );
-  if (signInLi) mountAccountWidget(signInLi);
+  if (signInLi) mountAccountWidget(signInLi, navWrapper);
   const utilityList = navUtility && navUtility.querySelector('ul');
-  if (utilityList) utilityList.append(buildAppGrid());
+  const appGridLi = buildAppGrid();
+  if (utilityList) utilityList.append(appGridLi);
+  const appsGridBtn = appGridLi.querySelector('button');
 
   // Account row (My Equipment / Order History / Help Center).
   decorateUtilityIcons(nav.querySelector('.nav-account'));
@@ -250,8 +312,9 @@ export default async function decorate(block) {
   hamburger.innerHTML = `<button type="button" aria-controls="nav" aria-label="Open navigation">
       <span class="nav-hamburger-icon"></span>
     </button>`;
-  hamburger.addEventListener('click', () => toggleMobileMenu(nav));
   nav.prepend(hamburger);
+  const hamburgerBtn = hamburger.querySelector('button');
+  mountGlobalMenuWidget([hamburgerBtn, appsGridBtn]);
 
   closeOnOutside(nav);
 
@@ -263,8 +326,6 @@ export default async function decorate(block) {
     if (btn) btn.setAttribute('aria-label', 'Open navigation');
   });
 
-  const navWrapper = document.createElement('div');
-  navWrapper.className = 'nav-wrapper';
   navWrapper.append(nav);
   block.append(navWrapper);
 }
