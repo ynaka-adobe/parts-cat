@@ -1,0 +1,11 @@
+{
+  "sites": {
+    "parts-cat": {
+      "libraryUrl": "https://main--sta-xwalk-boilerplate--aemysites.aem.page/tools/sidekick/library.json",
+      "previewOrg": "ynaka-adobe",
+      "previewSite": "parts-cat",
+      "contentHostUrl": "https://content.da.live/ynaka-adobe/parts-cat/"
+    }
+  },
+  "type": "da"
+}

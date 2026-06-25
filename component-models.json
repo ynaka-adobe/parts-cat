@@ -251,6 +251,31 @@
     ]
   },
   {
+    "id": "target-offer",
+    "fields": [
+      {
+        "component": "text",
+        "name": "mboxName",
+        "label": "Target mbox name",
+        "value": "",
+        "valueType": "string"
+      },
+      {
+        "component": "text",
+        "name": "exportId",
+        "label": "Export / offer id",
+        "value": "",
+        "valueType": "string"
+      },
+      {
+        "component": "richtext",
+        "name": "content",
+        "label": "Default content",
+        "valueType": "string"
+      }
+    ]
+  },
+  {
     "id": "video",
     "fields": [
       {

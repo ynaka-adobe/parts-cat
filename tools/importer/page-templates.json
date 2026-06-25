@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "projectType": "xwalk"
+  },
+  "templates": [
+    {
+      "name": "homepage",
+      "urls": [
+        "https://parts.cat.com/en/catcorp"
+      ],
+      "representativeUrl": "https://parts.cat.com/en/catcorp",
+      "coverageGaps": [],
+      "description": "Cat Parts Store homepage with hero smart banner, callouts, shop parts equipment finder, why-choose cards, shop by category grid, and promotional sections",
+      "blocks": [
+        {
+          "name": "hero-banner",
+          "instances": ["section.hero-banner_hero-smart-banner__yTc9k"]
+        },
+        {
+          "name": "cards-callouts",
+          "instances": [".hero-banner_hero-smart-callouts__FKgJI"]
+        },
+        {
+          "name": "cards-feature",
+          "instances": ["div[data-testid=\"cat-value-wrapper\"]"]
+        },
+        {
+          "name": "cards-category",
+          "instances": ["cat-grid.shop-category-card_category-grid__D_lJw"]
+        },
+        {
+          "name": "cards-promo",
+          "instances": [".middle-espot-container_home-page-espot__container__xWsRj"]
+        }
+      ],
+      "sections": [
+        {
+          "id": "section-1-hero",
+          "name": "Hero",
+          "selector": "body > main > section.hero-banner_hero-smart-banner__yTc9k",
+          "style": null,
+          "blocks": ["hero-banner", "cards-callouts"],
+          "defaultContent": []
+        },
+        {
+          "id": "section-2-shop-parts",
+          "name": "Shop Cat Parts",
+          "selector": "body > main > div.Homepage_home-section-container__lu7zY > cat-layout-container:nth-of-type(1)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": ["cat-layout-container:nth-of-type(1) cat-heading[variant=\"headline\"]"]
+        },
+        {
+          "id": "section-3-why-choose-cat",
+          "name": "Why Choose Cat",
+          "selector": "body > main > div.Homepage_home-section-container__lu7zY > cat-layout-container.Homepage_home-section-container__catvalue_section__xEmRV",
+          "style": "dark",
+          "blocks": ["cards-feature"],
+          "defaultContent": ["cat-value_cat-value-section___M6hj cat-heading[decorator]"]
+        },
+        {
+          "id": "section-4-shop-by-category",
+          "name": "Shop By Category",
+          "selector": "body > main > div.Homepage_home-section-container__lu7zY > cat-layout-container:nth-of-type(3) > div:nth-of-type(1)",
+          "style": null,
+          "blocks": ["cards-category"],
+          "defaultContent": ["#categories-section"]
+        },
+        {
+          "id": "section-5-get-the-most",
+          "name": "Get the Most Out of Your Equipment",
+          "selector": "body > main > div.Homepage_home-section-container__lu7zY > cat-layout-container:nth-of-type(3) > div:nth-of-type(2)",
+          "style": null,
+          "blocks": ["cards-promo"],
+          "defaultContent": []
+        }
+      ]
+    }
+  ]
+}
