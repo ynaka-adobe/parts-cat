@@ -39,6 +39,21 @@ header nav a:any-link {
 
 header nav a:hover { color: var(--brand-yellow, #ffcd11); }
 
+/* ---------- inline icons (inherit currentColor) ---------- */
+header nav .nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+header nav .nav-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentcolor;
+  display: block;
+}
+
 /* ---------- Row 1: brand + search + top utility ---------- */
 header nav .nav-brand {
   grid-area: brand;
@@ -46,6 +61,35 @@ header nav .nav-brand {
   align-items: center;
   gap: 16px;
   min-height: 80px;
+}
+
+/* "Add Equipment" pill next to the logo */
+header nav .nav-add-equipment {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--cat-neutral-80, #565656);
+  border-radius: var(--border-radius, 4px);
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold, 600);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+header nav .nav-add-equipment:hover {
+  border-color: var(--brand-yellow, #ffcd11);
+  color: var(--brand-yellow, #ffcd11);
+}
+
+header nav .nav-add-equipment .nav-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 header nav .nav-brand a:first-child { line-height: 0; }
@@ -117,6 +161,22 @@ header nav .nav-utility a {
   gap: 6px;
 }
 
+/* icon-only items (cart, app-grid): hide the text label, keep the glyph */
+header nav .nav-utility a.nav-icon-only { font-size: 0; gap: 0; }
+
+header nav .nav-app-grid button {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+header nav .nav-app-grid button:hover { color: var(--brand-yellow, #ffcd11); }
+
 /* ---------- Row 2: primary nav + account utility ---------- */
 header nav .nav-sections {
   grid-area: sections;
@@ -148,6 +208,17 @@ header nav .nav-sections > ul > li > a {
   cursor: pointer;
 }
 
+/* expanded primary item gets a subtle highlighted box (e.g. open "Shop") */
+header nav .nav-sections .nav-drop > p {
+  padding: 16px 12px;
+  border-radius: var(--border-radius, 4px);
+  transition: background-color 0.2s ease;
+}
+
+header nav .nav-sections .nav-drop[aria-expanded='true'] > p {
+  background: var(--cat-neutral-90, #3f3f3f);
+}
+
 /* dropdown caret on items that own a sub-list */
 header nav .nav-sections .nav-drop > p::after {
   content: '';
@@ -160,7 +231,7 @@ header nav .nav-sections .nav-drop > p::after {
 }
 
 header nav .nav-sections .nav-drop[aria-expanded='true'] > p {
-  color: var(--brand-yellow, #ffcd11);
+  color: #fff;
 }
 
 header nav .nav-sections .nav-drop[aria-expanded='true'] > p::after {
@@ -264,9 +335,10 @@ header nav .nav-account a {
 }
 
 /* ---------- mobile ---------- */
+/* Hidden by default (desktop); the mobile media query below reveals it. */
 header nav .nav-hamburger {
   grid-area: hamburger;
-  display: flex;
+  display: none;
   align-items: center;
 }
 
@@ -312,6 +384,8 @@ header nav .nav-hamburger-icon::after { top: 7px; }
       'utility utility' auto / auto 1fr;
     padding: 0 12px;
   }
+
+  header nav .nav-hamburger { display: flex; }
 
   header nav .nav-brand {
     min-height: 64px;

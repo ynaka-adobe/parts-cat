@@ -3,6 +3,46 @@ import { loadFragment } from '../fragment/fragment.js';
 
 const isDesktop = window.matchMedia('(min-width: 992px)');
 
+/* Inline line icons (fill: currentColor so they inherit hover color). */
+const ICONS = {
+  equipment: '<path d="M3 17.5h1.2a2.3 2.3 0 0 0 4.5 0H14a1.5 1.5 0 0 0 1.5-1.5v-.5h3.2l2.3-3.4V11h-4.6l-1.5-2.2A1.5 1.5 0 0 0 13.4 8H9.5A1.5 1.5 0 0 0 8 9.5V11H5.4L3 14.4v3.1Zm3.4 0a1.1 1.1 0 1 1 2.2 0 1.1 1.1 0 0 1-2.2 0ZM9.5 11V9.5h3.9l1 1.5H9.5Z"/><circle cx="18.3" cy="17.5" r="1.6"/>',
+  store: '<path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/>',
+  user: '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4Z"/>',
+  cart: '<path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM1 2v2h2l3.6 7.6-1.4 2.5c-.2.3-.2.6-.2 1 0 1.1.9 2 2 2h12v-2H7.4c-.1 0-.2-.1-.2-.3l.9-1.7h7.4c.8 0 1.4-.4 1.8-1l3.6-6.5c.1-.2.1-.5 0-.7-.2-.3-.5-.4-.8-.4H5.2L4.3 2H1Zm16 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>',
+  apps: '<path d="M4 8h4V4H4v4Zm6 12h4v-4h-4v4Zm-6 0h4v-4H4v4Zm0-6h4v-4H4v4Zm6 0h4v-4h-4v4Zm6-10v4h4V4h-4Zm-6 4h4V4h-4v4Zm6 6h4v-4h-4v4Zm0 6h4v-4h-4v4Z"/>',
+  history: '<path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9.1.1L9 12H6a7 7 0 1 1 2 4.9l-1.4 1.5A9 9 0 1 0 13 3Zm-1 5v5l4.3 2.5.7-1.2-3.5-2.1V8H12Z"/>',
+  help: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 17h-2v-2h2v2Zm2.1-7.8-.9.9c-.7.7-1.2 1.4-1.2 2.9h-2v-.5c0-1.1.5-2.1 1.2-2.8l1.2-1.3c.4-.3.6-.8.6-1.4 0-1.1-.9-2-2-2s-2 .9-2 2H8a4 4 0 0 1 8 0c0 .9-.4 1.7-.9 2.2Z"/>',
+};
+
+function makeIcon(name) {
+  const span = document.createElement('span');
+  span.className = `nav-icon nav-icon-${name}`;
+  span.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[name]}</svg>`;
+  return span;
+}
+
+/* Map a link href to an icon name (utility + account rows). */
+function iconForHref(href = '') {
+  if (href.includes('store-locator')) return 'store';
+  if (href.includes('sign-in')) return 'user';
+  if (/\/cart(\/|$|\?)/.test(href)) return 'cart';
+  if (href.includes('my-equipment')) return 'equipment';
+  if (href.includes('/orders')) return 'history';
+  if (href.toLowerCase().includes('help')) return 'help';
+  return null;
+}
+
+/* Prepend the mapped icon onto each link in a utility/account section. */
+function decorateUtilityIcons(section) {
+  if (!section) return;
+  section.querySelectorAll('a').forEach((a) => {
+    const name = iconForHref(a.getAttribute('href') || '');
+    if (!name) return;
+    a.prepend(makeIcon(name));
+    if (name === 'cart') a.classList.add('nav-icon-only');
+  });
+}
+
 /**
  * Build the search form (controls live in JS per the nav.plain.html contract).
  */
@@ -17,6 +57,34 @@ function buildSearch() {
       <span class="nav-search-icon"></span>
     </button>`;
   return form;
+}
+
+/**
+ * Build the "Add Equipment" pill button shown beside the brand logo.
+ */
+function buildAddEquipment() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'nav-add-equipment';
+  btn.append(makeIcon('equipment'));
+  const label = document.createElement('span');
+  label.textContent = 'Add Equipment';
+  btn.append(label);
+  return btn;
+}
+
+/**
+ * Build the icon-only app-grid (9-dot) launcher for the top utility row.
+ */
+function buildAppGrid() {
+  const li = document.createElement('li');
+  li.className = 'nav-app-grid';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.setAttribute('aria-label', 'All applications');
+  btn.append(makeIcon('apps'));
+  li.append(btn);
+  return li;
 }
 
 /**
@@ -91,11 +159,12 @@ export default async function decorate(block) {
     if (section) section.classList.add(`nav-${c}`);
   });
 
-  // Brand link cleanup (strip EDS button styling).
+  // Brand link cleanup (strip EDS button styling) + Add Equipment + search.
   const navBrand = nav.querySelector('.nav-brand');
   if (navBrand) {
     const brandLink = navBrand.querySelector('a');
     if (brandLink) brandLink.className = '';
+    navBrand.append(buildAddEquipment());
     navBrand.append(buildSearch());
   }
 
@@ -106,6 +175,15 @@ export default async function decorate(block) {
       if (li.querySelector(':scope > ul')) wireDropdown(li, navSections);
     });
   }
+
+  // Top utility (Select Store / Sign in / Cart) + app-grid launcher.
+  const navUtility = nav.querySelector('.nav-utility');
+  decorateUtilityIcons(navUtility);
+  const utilityList = navUtility && navUtility.querySelector('ul');
+  if (utilityList) utilityList.append(buildAppGrid());
+
+  // Account row (My Equipment / Order History / Help Center).
+  decorateUtilityIcons(nav.querySelector('.nav-account'));
 
   // Hamburger (mobile).
   const hamburger = document.createElement('div');
