@@ -242,6 +242,53 @@ function mountSelectStoreWidget(storeLi, navWrapper) {
 }
 
 /**
+ * Generic widget panel: converts a link/button trigger into a toggle that
+ * drops a panel from the sticky header and lazily mounts a widget script.
+ * @param {HTMLElement} triggerEl  The clickable element (a or button)
+ * @param {HTMLElement} navWrapper The sticky nav-wrapper for panel attachment
+ * @param {{ id, src, globalName, alignRight?, extraMountOptions? }} opts
+ */
+function mountWidgetPanel(triggerEl, navWrapper, { id, src, globalName, alignRight = false, extraMountOptions = {} }) {
+  if (triggerEl.tagName === 'A') {
+    triggerEl.removeAttribute('href');
+    triggerEl.setAttribute('role', 'button');
+  }
+  triggerEl.setAttribute('aria-haspopup', 'dialog');
+  triggerEl.setAttribute('aria-expanded', 'false');
+
+  const panel = document.createElement('div');
+  panel.className = 'nav-widget-panel';
+  if (alignRight) panel.classList.add('nav-widget-panel--right');
+  panel.hidden = true;
+
+  const container = document.createElement('div');
+  container.id = id;
+  panel.append(container);
+  navWrapper.append(panel);
+
+  const open = () => { panel.hidden = false; triggerEl.setAttribute('aria-expanded', 'true'); };
+  const close = () => { panel.hidden = true; triggerEl.setAttribute('aria-expanded', 'false'); };
+
+  triggerEl.addEventListener('click', (e) => { e.preventDefault(); panel.hidden ? open() : close(); });
+  triggerEl.addEventListener('keydown', (e) => {
+    if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); panel.hidden ? open() : close(); }
+    if (e.code === 'Escape') close();
+  });
+
+  document.addEventListener('click', (e) => {
+    const scope = triggerEl.closest('li') || triggerEl;
+    if (!scope.contains(e.target) && !panel.contains(e.target)) close();
+  });
+
+  const script = document.createElement('script');
+  script.src = src;
+  script.addEventListener('load', () => {
+    window[globalName].mount(`#${id}`, { ...extraMountOptions, onClose: close });
+  });
+  document.head.append(script);
+}
+
+/**
  * Build the icon-only app-grid (9-dot) launcher for the top utility row.
  */
 function buildAppGrid() {
@@ -340,16 +387,30 @@ export default async function decorate(block) {
   if (navBrand) {
     const brandLink = navBrand.querySelector('a');
     if (brandLink) brandLink.className = '';
-    navBrand.append(buildAddEquipment());
+    const addEquipmentBtn = buildAddEquipment();
+    navBrand.append(addEquipmentBtn);
+    mountWidgetPanel(addEquipmentBtn, navWrapper, {
+      id: 'cat-add-equipment',
+      src: 'https://cat-apps-sigma.vercel.app/widgets/cat-add-equipment.js',
+      globalName: 'CATAddEquipment',
+    });
     navBrand.append(buildSearch());
   }
 
-  // Primary nav: wire the Shop dropdown.
+  // Primary nav: wire the Shop dropdown + SIS widget.
   const navSections = nav.querySelector('.nav-sections');
   if (navSections) {
     navSections.querySelectorAll(':scope > ul > li').forEach((li) => {
       if (li.querySelector(':scope > ul')) wireDropdown(li, navSections);
     });
+    const sisA = navSections.querySelector('a[href*="/sis"]');
+    if (sisA) {
+      mountWidgetPanel(sisA, navWrapper, {
+        id: 'cat-sis',
+        src: 'https://cat-apps-sigma.vercel.app/widgets/cat-sis.js',
+        globalName: 'CATSIS',
+      });
+    }
   }
 
   // Top utility (Select Store / Sign in / Cart) + app-grid launcher.
@@ -369,7 +430,17 @@ export default async function decorate(block) {
   const appsGridBtn = appGridLi.querySelector('button');
 
   // Account row (My Equipment / Order History / Help Center).
-  decorateUtilityIcons(nav.querySelector('.nav-account'));
+  const navAccount = nav.querySelector('.nav-account');
+  decorateUtilityIcons(navAccount);
+  const orderA = navAccount && navAccount.querySelector('a[href*="/orders"]');
+  if (orderA) {
+    mountWidgetPanel(orderA, navWrapper, {
+      id: 'cat-order-history',
+      src: 'https://cat-apps-sigma.vercel.app/widgets/cat-order-history.js',
+      globalName: 'CATOrderHistory',
+      alignRight: true,
+    });
+  }
 
   // Hamburger (mobile).
   const hamburger = document.createElement('div');
