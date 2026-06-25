@@ -1,20 +1,159 @@
+/* Cat® Parts Store footer — black with yellow top border, 4-col nav + language grid + legal bar */
+
 footer {
-  background-color: var(--light-color);
-  font-size: var(--body-font-size-xs);
+  background-color: #000;
+  color: #fff;
+  border-top: 4px solid var(--brand-yellow, #ffcd11);
+  font-family: var(--body-font-family, "Noto Sans", sans-serif);
+  font-size: 0.875rem;
 }
 
+footer a:any-link { color: #ccc; text-decoration: none; }
+footer a:hover { color: var(--brand-yellow, #ffcd11); }
+footer ul { list-style: none; margin: 0; padding: 0; }
+footer p { margin: 0; }
+footer h3 { margin: 0 0 16px; font-size: 0.9375rem; font-weight: 700; color: #fff; }
+
+/* ── max-width wrapper ── */
 footer .footer > div {
-  margin: auto;
-  max-width: 1200px;
-  padding: 40px 24px 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 32px;
 }
 
-footer .footer p {
-  margin: 0;
+/* ══════════════════════════════════════════
+   SECTION 1 — 4-column link nav
+══════════════════════════════════════════ */
+footer .footer .section:nth-child(1) {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+  padding: 48px 0 40px;
+  border-bottom: 1px solid #2a2a2a;
 }
 
-@media (width >= 900px) {
-  footer .footer > div {
-    padding: 40px 32px 24px;
+footer .footer .section:nth-child(1) > div > ul > li {
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+/* Social links — icon before each platform name */
+footer .footer .section:nth-child(1) > div ul li a[href*="facebook"]::before,
+footer .footer .section:nth-child(1) > div ul li a[href*="linkedin"]::before,
+footer .footer .section:nth-child(1) > div ul li a[href*="youtube"]::before,
+footer .footer .section:nth-child(1) > div ul li a[href*="x.com"]::before,
+footer .footer .section:nth-child(1) > div ul li a[href*="instagram"]::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background: center / contain no-repeat;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+footer .footer .section:nth-child(1) > div ul li a[href*="facebook"]::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z'/%3E%3C/svg%3E");
+}
+
+footer .footer .section:nth-child(1) > div ul li a[href*="linkedin"]::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2zM4 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4z'/%3E%3C/svg%3E");
+}
+
+footer .footer .section:nth-child(1) > div ul li a[href*="youtube"]::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58zM9.75 15.02V8.98L15.5 12l-5.75 3.02z'/%3E%3C/svg%3E");
+}
+
+footer .footer .section:nth-child(1) > div ul li a[href*="x.com"]::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z'/%3E%3C/svg%3E");
+}
+
+footer .footer .section:nth-child(1) > div ul li a[href*="instagram"]::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ccc' stroke-width='2'%3E%3Crect x='2' y='2' width='20' height='20' rx='5' ry='5'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Ccircle cx='17.5' cy='6.5' r='1' fill='%23ccc' stroke='none'/%3E%3C/svg%3E");
+}
+
+/* ══════════════════════════════════════════
+   SECTION 2 — Language selector
+══════════════════════════════════════════ */
+footer .footer .section:nth-child(2) {
+  padding: 20px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+footer .footer .section:nth-child(2) ul {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+footer .footer .section:nth-child(2) ul li a {
+  display: inline-block;
+  padding: 5px 14px;
+  font-size: 0.8125rem;
+  border-radius: 4px;
+  line-height: 1.8;
+  color: #ccc;
+}
+
+footer .footer .section:nth-child(2) ul li a:hover {
+  color: #fff;
+  background: #3f3f3f;
+}
+
+/* highlight current locale — first item = US English */
+footer .footer .section:nth-child(2) ul li:first-child a {
+  background: #444;
+  color: #fff;
+}
+
+/* ══════════════════════════════════════════
+   SECTION 3 — Bottom legal bar
+══════════════════════════════════════════ */
+footer .footer .section:nth-child(3) {
+  padding: 20px 0 32px;
+}
+
+footer .footer .section:nth-child(3) ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+footer .footer .section:nth-child(3) ul:first-child { margin-bottom: 10px; }
+footer .footer .section:nth-child(3) ul:nth-child(2) { margin-bottom: 16px; }
+
+footer .footer .section:nth-child(3) ul li + li::before {
+  content: '|';
+  margin: 0 10px;
+  color: #555;
+}
+
+footer .footer .section:nth-child(3) ul a {
+  font-size: 0.8125rem;
+  color: #ccc;
+}
+
+footer .footer .section:nth-child(3) ul a:hover { color: var(--brand-yellow, #ffcd11); }
+
+footer .footer .section:nth-child(3) > p {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+/* ── Mobile ── */
+@media (width < 768px) {
+  footer .footer > div { padding: 0 16px; }
+
+  footer .footer .section:nth-child(1) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    padding: 32px 0 24px;
   }
+
+  footer .footer .section:nth-child(3) ul {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  footer .footer .section:nth-child(3) ul li + li::before { display: none; }
 }
