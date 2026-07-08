@@ -435,6 +435,173 @@ const CAMPAIGN_TYPES = [
   { value: 'specials', label: 'Create Specials' },
 ];
 
+const CAMPAIGN_VARIANTS = {
+  banner: [
+    {
+      value: 'leader-board',
+      label: 'Leader Board',
+      desc: 'Horizontal ad that spans the width of the page. Standard leaderboard banners are usually 728 pixels wide by 90 pixels tall.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="15" width="96" height="14" fill="#1473e6" rx="2"/>
+        <rect x="2" y="33" width="60" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="40" width="45" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="47" width="55" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="68" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="76" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FOOTER</text>
+      </svg>`,
+    },
+    {
+      value: 'medium-rectangle',
+      label: 'Medium Rectangle',
+      desc: 'This kind of banner ad is the most compact of all the popular banner ad size choices so that it doesn\'t clutter a web page. This type of banner does not span the width of the webpage.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="15" width="40" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="22" width="30" height="4" fill="#ddd" rx="1"/>
+        <rect x="55" y="15" width="30" height="22" fill="#1473e6" rx="2"/>
+        <rect x="2" y="40" width="40" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="47" width="35" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="68" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="76" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FOOTER</text>
+      </svg>`,
+    },
+    {
+      value: 'large-rectangle',
+      label: 'Large Rectangle',
+      desc: 'Previously referred to as full width. This is a horizontal ad that spans the width of the page but is generally taller than a leaderboard ad.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="15" width="96" height="26" fill="#1473e6" rx="2"/>
+        <rect x="2" y="45" width="60" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="52" width="45" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="68" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="76" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FOOTER</text>
+      </svg>`,
+    },
+    {
+      value: 'ribbon',
+      label: 'Ribbon',
+      desc: 'Ribbons can be used to remind visitors of an offer, share a voucher code, or display a cookie notification and appear towards the top of the page.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="14" width="96" height="6" fill="#1473e6" rx="1"/>
+        <rect x="2" y="24" width="60" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="31" width="45" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="38" width="55" height="4" fill="#ddd" rx="1"/>
+        <rect x="2" y="68" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="76" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FOOTER</text>
+      </svg>`,
+    },
+  ],
+  landing: [
+    {
+      value: 'hero',
+      label: 'Hero Layout',
+      desc: 'Full-bleed hero image at the top with headline, description, and primary CTA below.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="14" width="96" height="30" fill="#1473e6" rx="2"/>
+        <rect x="20" y="48" width="60" height="4" fill="#ddd" rx="1"/>
+        <rect x="28" y="55" width="44" height="4" fill="#ddd" rx="1"/>
+        <rect x="35" y="62" width="30" height="6" fill="#ffcb00" rx="2"/>
+        <rect x="2" y="71" width="96" height="7" fill="#999" rx="2"/>
+      </svg>`,
+    },
+    {
+      value: 'split',
+      label: 'Split Layout',
+      desc: 'Image on one side, copy and CTA on the other. Ideal for product or feature spotlights.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="14" width="46" height="46" fill="#1473e6" rx="2"/>
+        <rect x="54" y="18" width="40" height="4" fill="#ddd" rx="1"/>
+        <rect x="54" y="25" width="32" height="4" fill="#ddd" rx="1"/>
+        <rect x="54" y="32" width="36" height="4" fill="#ddd" rx="1"/>
+        <rect x="54" y="44" width="24" height="8" fill="#ffcb00" rx="2"/>
+        <rect x="2" y="64" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="72" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FOOTER</text>
+      </svg>`,
+    },
+    {
+      value: 'cards',
+      label: 'Cards Layout',
+      desc: 'Grid of product or feature cards below a heading section. Great for showcasing multiple offers.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="14" width="96" height="10" fill="#1473e6" rx="2"/>
+        <rect x="2" y="28" width="29" height="20" fill="#ddd" rx="2"/>
+        <rect x="35" y="28" width="29" height="20" fill="#ddd" rx="2"/>
+        <rect x="68" y="28" width="29" height="20" fill="#ddd" rx="2"/>
+        <rect x="2" y="68" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="76" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FOOTER</text>
+      </svg>`,
+    },
+  ],
+  specials: [
+    {
+      value: 'flash-sale',
+      label: 'Flash Sale',
+      desc: 'Time-limited offer with countdown timer and prominent discount. Creates urgency for short-window promotions.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="14" width="96" height="40" fill="#d7373f" rx="2"/>
+        <text x="50" y="36" font-size="9" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FLASH SALE</text>
+        <rect x="25" y="59" width="50" height="7" fill="#ffcb00" rx="2"/>
+        <rect x="2" y="70" width="96" height="8" fill="#999" rx="2"/>
+      </svg>`,
+    },
+    {
+      value: 'seasonal',
+      label: 'Seasonal Promo',
+      desc: 'Seasonal campaign page with themed imagery and curated product highlights for the season.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="14" width="96" height="22" fill="#2d9d78" rx="2"/>
+        <rect x="2" y="39" width="45" height="16" fill="#ddd" rx="2"/>
+        <rect x="51" y="39" width="47" height="16" fill="#ddd" rx="2"/>
+        <rect x="2" y="68" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="76" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FOOTER</text>
+      </svg>`,
+    },
+    {
+      value: 'clearance',
+      label: 'Clearance',
+      desc: 'Clearance sale page featuring discounted items in a list or grid with original and sale prices.',
+      preview: `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100" height="80" fill="#f5f5f5" rx="3"/>
+        <rect x="2" y="2" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="10" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TOP NAV</text>
+        <rect x="2" y="14" width="96" height="12" fill="#e68619" rx="2"/>
+        <rect x="2" y="29" width="22" height="24" fill="#ddd" rx="2"/>
+        <rect x="26" y="29" width="22" height="24" fill="#ddd" rx="2"/>
+        <rect x="50" y="29" width="22" height="24" fill="#ddd" rx="2"/>
+        <rect x="74" y="29" width="22" height="24" fill="#ddd" rx="2"/>
+        <rect x="2" y="68" width="96" height="10" fill="#999" rx="2"/>
+        <text x="50" y="76" font-size="5" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="Arial">FOOTER</text>
+      </svg>`,
+    },
+  ],
+};
+
 async function showNewCampaignModal(wfProjects, onCreated) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -467,7 +634,7 @@ async function showNewCampaignModal(wfProjects, onCreated) {
         <div id="type-list" style="display:flex;flex-direction:column;gap:2px"></div>
       </div>
       <div class="modal-footer">
-        <button class="modal-btn-primary" id="type-next" disabled>Create</button>
+        <button class="modal-btn-primary" id="type-next" disabled>Next</button>
         <button class="modal-btn-cancel" id="type-cancel">Cancel</button>
       </div>`;
 
@@ -488,12 +655,67 @@ async function showNewCampaignModal(wfProjects, onCreated) {
     });
 
     modal.querySelector('#type-cancel').addEventListener('click', close);
-    nextBtn.addEventListener('click', () => { if (selected) showDetailsForm(selected); });
+    nextBtn.addEventListener('click', () => { if (selected) showVariantPicker(selected); });
   }
 
-  // ── Step 2: campaign details form ─────────────────────────────────────────
-  function showDetailsForm(campaignType) {
+  // ── Step 2: variant picker ────────────────────────────────────────────────
+  function showVariantPicker(campaignType) {
     const typeLabel = CAMPAIGN_TYPES.find((t) => t.value === campaignType)?.label || campaignType;
+    const variants = CAMPAIGN_VARIANTS[campaignType] || [];
+    let selected = null;
+
+    modal.innerHTML = `
+      <div class="modal-header" style="padding-bottom:4px">
+        <div class="modal-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+          </svg>
+        </div>
+        <span class="modal-title">${esc(typeLabel)}</span>
+      </div>
+      <div class="modal-body" style="gap:8px;padding-top:12px">
+        <p class="modal-label" style="margin:0 0 4px">Select Banner Type</p>
+        <div id="variant-list" class="variant-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-primary" id="var-next" disabled>Next</button>
+        <button class="modal-btn-cancel" id="var-back">← Back</button>
+      </div>`;
+
+    const variantList = modal.querySelector('#variant-list');
+    const nextBtn = modal.querySelector('#var-next');
+
+    variants.forEach((variant) => {
+      const card = document.createElement('div');
+      card.className = 'variant-card';
+      card.innerHTML = `
+        <div class="variant-card-info">
+          <div class="variant-card-name">${esc(variant.label)}</div>
+          <div class="variant-card-desc">${esc(variant.desc)}</div>
+        </div>
+        <div class="variant-card-preview">${variant.preview}</div>
+        <input type="radio" name="campaign-variant" value="${esc(variant.value)}" class="variant-card-radio">`;
+
+      card.addEventListener('click', () => {
+        selected = variant.value;
+        nextBtn.disabled = false;
+        variantList.querySelectorAll('.variant-card').forEach((c) => c.classList.remove('selected'));
+        card.classList.add('selected');
+        card.querySelector('input').checked = true;
+      });
+
+      variantList.append(card);
+    });
+
+    modal.querySelector('#var-back').addEventListener('click', showTypePicker);
+    nextBtn.addEventListener('click', () => { if (selected) showDetailsForm(campaignType, selected); });
+  }
+
+  // ── Step 3: campaign details form ─────────────────────────────────────────
+  function showDetailsForm(campaignType, variant) {
+    const typeLabel = CAMPAIGN_TYPES.find((t) => t.value === campaignType)?.label || campaignType;
+    const variantLabel = (CAMPAIGN_VARIANTS[campaignType] || []).find((v) => v.value === variant)?.label || variant;
 
     modal.innerHTML = `
       <div class="modal-header">
@@ -503,7 +725,10 @@ async function showNewCampaignModal(wfProjects, onCreated) {
             <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
           </svg>
         </div>
-        <span class="modal-title">${esc(typeLabel)}</span>
+        <div>
+          <div class="modal-title">${esc(typeLabel)}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px">${esc(variantLabel)}</div>
+        </div>
       </div>
       <div class="modal-body">
         <div class="modal-field">
@@ -536,7 +761,7 @@ async function showNewCampaignModal(wfProjects, onCreated) {
     const submitBtn = modal.querySelector('#nc-submit');
     nameInput.focus();
 
-    modal.querySelector('#nc-back').addEventListener('click', showTypePicker);
+    modal.querySelector('#nc-back').addEventListener('click', () => showVariantPicker(campaignType));
 
     submitBtn.addEventListener('click', async () => {
       const name = nameInput.value.trim();
@@ -548,7 +773,7 @@ async function showNewCampaignModal(wfProjects, onCreated) {
 
       try {
         const mbox = modal.querySelector('#nc-mbox')?.value || 'target-global-mbox';
-        const result = await createTargetActivity({ name, mbox, campaignType });
+        const result = await createTargetActivity({ name, mbox, campaignType, variant });
         close();
       onCreated(result);
     } catch (err) {
