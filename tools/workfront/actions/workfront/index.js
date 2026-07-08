@@ -130,6 +130,15 @@ async function main(params) {
       if (params.duration) { taskBody.duration = Number(params.duration); taskBody.durationUnit = 'D'; }
       if (params.assignedToID) taskBody.assignedToID = params.assignedToID;
       data = await wfRequest('POST', `/TASK?fields=ID,name,taskNumber,status`, domain, token, taskBody);
+    } else if (resource === 'update_task') {
+      const taskId = params.taskId;
+      if (!taskId) return { statusCode: 400, body: JSON.stringify({ error: 'taskId required' }) };
+      const body = {};
+      if (params.status) body.status = params.status;
+      if (params.percentComplete != null) body.percentComplete = Number(params.percentComplete);
+      data = await wfRequest('PUT', `/TASK/${taskId}?fields=ID,name,status,percentComplete`, domain, token, body);
+    } else if (resource === 'task_statuses') {
+      data = await wfRequest('GET', `/CSOBJ/search?objCode=TASK&fields=ID,key,label,equatesWith&$$LIMIT=100`, domain, token);
     } else {
       return { statusCode: 400, body: JSON.stringify({ error: `Unknown resource "${resource}"` }) };
     }
