@@ -93,6 +93,21 @@ async function main(params) {
       data = await wfRequest('GET',
         `/OPTASK/search?projectID=${projectId}&fields=ID,name,status,priority,assignedTo:name,plannedCompletionDate,enteredBy:name,entryDate&$$FIRST=0&$$LIMIT=${limit}`,
         domain, token);
+    } else if (resource === 'search_users') {
+      const q = params.query || '';
+      if (!q) return { statusCode: 400, body: JSON.stringify({ error: 'query required' }) };
+      data = await wfRequest('GET',
+        `/USER/search?name=${encodeURIComponent(q)}&name_Mod=cicontains&fields=ID,name,emailAddr&$$LIMIT=10`,
+        domain, token);
+    } else if (resource === 'update_issue') {
+      const issueId = params.issueId;
+      if (!issueId) return { statusCode: 400, body: JSON.stringify({ error: 'issueId required' }) };
+      const body = {};
+      if (params.status) body.status = params.status;
+      if (params.assignedToID) body.assignedToID = params.assignedToID;
+      data = await wfRequest('PUT',
+        `/OPTASK/${issueId}?fields=ID,name,status,assignedTo:name`,
+        domain, token, body);
     } else if (resource === 'current_user') {
       data = await wfRequest('GET', `/USER/search?ID=$$USER.ID&fields=ID,name,emailAddr&$$LIMIT=1`, domain, token);
     } else if (resource === 'create_task') {

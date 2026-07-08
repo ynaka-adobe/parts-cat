@@ -257,6 +257,9 @@ async function buildApp() {
   // ── Detail panel
   const detailPanel = buildDetailPanel();
 
+  // ── Issue edit panel
+  const issuePanel = buildIssuePanel();
+
   // ── New Task modal
   let cachedCurrentUser = null;
   newTaskBtn.addEventListener('click', () => openNewTaskModal());
@@ -705,6 +708,7 @@ async function buildApp() {
       const pri = ISSUE_PRIORITY[issue.priority] || '—';
       const priColor = PRIORITY_COLOR[issue.priority] || '#888';
       const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
       tr.innerHTML = `
         <td class="name-cell">${esc(issue.name || '(Untitled)')}</td>
         <td><span style="font-size:12px;font-weight:600;color:${priColor}">${esc(pri)}</span></td>
@@ -712,6 +716,7 @@ async function buildApp() {
         <td>${esc(formatDate(issue.plannedCompletionDate))}</td>
         <td>${esc(issue.enteredBy?.name || '—')}</td>
         <td><span class="badge" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${esc(st.label)}</span></td>`;
+      tr.addEventListener('click', () => issuePanel.show(issue, () => loadIssues(currentProject)));
       tbody.append(tr);
     });
 
@@ -828,6 +833,188 @@ function buildDetailPanel() {
   return panel;
 }
 
+// ── Issue edit panel ──────────────────────────────────────────────────────────
+
+function buildIssuePanel() {
+  const ISSUE_STATUS_OPTIONS = [
+    { value: 'NEW', label: 'New',         color: '#1473e6' },
+    { value: 'INP', label: 'In Progress', color: '#e68619' },
+    { value: 'ONH', label: 'On Hold',     color: '#888' },
+    { value: 'CPL', label: 'Complete',    color: '#2d9d78' },
+    { value: 'RES', label: 'Resolved',    color: '#2d9d78' },
+    { value: 'CLO', label: 'Closed',      color: '#888' },
+  ];
+
+  const panel = document.createElement('div');
+  panel.className = 'detail-panel';
+
+  const header = document.createElement('div');
+  header.className = 'detail-header';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'detail-name';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-close';
+  closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+  </svg>`;
+  closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+  header.append(nameEl, closeBtn);
+
+  const body = document.createElement('div');
+  body.className = 'detail-body';
+  panel.append(header, body);
+  document.body.append(panel);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') panel.classList.remove('open'); });
+
+  panel.show = (issue, onSaved) => {
+    nameEl.textContent = issue.name || '(Untitled)';
+
+    let selectedStatus = issue.status || 'NEW';
+    let selectedUserId = issue.assignedTo?.ID || null;
+    let selectedUserName = issue.assignedTo?.name || null;
+
+    body.innerHTML = '';
+
+    // ── Status field
+    const statusLabel = document.createElement('div');
+    statusLabel.className = 'detail-field-label';
+    statusLabel.textContent = 'Status';
+    statusLabel.style.cssText = 'font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#888;margin-bottom:6px';
+
+    const statusBtns = document.createElement('div');
+    statusBtns.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px';
+    ISSUE_STATUS_OPTIONS.forEach(({ value, label, color }) => {
+      const btn = document.createElement('button');
+      btn.className = 'issue-status-btn';
+      btn.dataset.value = value;
+      btn.textContent = label;
+      btn.style.cssText = `border:1px solid ${color}44;background:${selectedStatus === value ? color : color + '11'};color:${selectedStatus === value ? '#fff' : color};border-radius:12px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .1s,color .1s`;
+      btn.addEventListener('click', () => {
+        selectedStatus = value;
+        statusBtns.querySelectorAll('.issue-status-btn').forEach((b) => {
+          const opt = ISSUE_STATUS_OPTIONS.find((o) => o.value === b.dataset.value);
+          const active = b.dataset.value === selectedStatus;
+          b.style.background = active ? opt.color : opt.color + '11';
+          b.style.color = active ? '#fff' : opt.color;
+        });
+      });
+      statusBtns.append(btn);
+    });
+
+    // ── Assigned To field
+    const assignLabel = document.createElement('div');
+    assignLabel.style.cssText = 'font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#888;margin-bottom:6px';
+    assignLabel.textContent = 'Assigned To';
+
+    const currentAssignee = document.createElement('div');
+    currentAssignee.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:24px';
+
+    const assigneeChip = document.createElement('span');
+    assigneeChip.className = 'modal-assignee-chip';
+    assigneeChip.style.display = selectedUserName ? '' : 'none';
+    assigneeChip.textContent = selectedUserName || '';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.style.cssText = 'background:none;border:none;color:#888;cursor:pointer;font-size:16px;line-height:1;padding:0';
+    clearBtn.title = 'Remove assignee';
+    clearBtn.innerHTML = '&times;';
+    clearBtn.style.display = selectedUserName ? '' : 'none';
+    clearBtn.addEventListener('click', () => {
+      selectedUserId = null;
+      selectedUserName = null;
+      assigneeChip.style.display = 'none';
+      clearBtn.style.display = 'none';
+      userSearchInput.value = '';
+    });
+    currentAssignee.append(assigneeChip, clearBtn);
+
+    const userSearchInput = document.createElement('input');
+    userSearchInput.className = 'modal-input';
+    userSearchInput.placeholder = 'Search people…';
+    userSearchInput.style.cssText = 'width:100%;box-sizing:border-box;font-size:13px';
+
+    const userResults = document.createElement('div');
+    userResults.className = 'user-results';
+
+    let searchTimer;
+    userSearchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const q = userSearchInput.value.trim();
+      userResults.innerHTML = '';
+      if (!q) return;
+      searchTimer = setTimeout(async () => {
+        userResults.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:#888">Searching…</div>';
+        try {
+          const users = await api({ resource: 'search_users', query: q });
+          userResults.innerHTML = '';
+          const list = Array.isArray(users) ? users : [];
+          if (!list.length) {
+            userResults.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:#888">No results</div>';
+            return;
+          }
+          list.forEach((u) => {
+            const item = document.createElement('div');
+            item.className = 'user-result-item';
+            item.innerHTML = `<strong style="font-size:13px">${esc(u.name)}</strong> <span style="font-size:11px;color:#888">${esc(u.emailAddr || '')}</span>`;
+            item.addEventListener('click', () => {
+              selectedUserId = u.ID;
+              selectedUserName = u.name;
+              assigneeChip.textContent = u.name;
+              assigneeChip.style.display = '';
+              clearBtn.style.display = '';
+              userSearchInput.value = '';
+              userResults.innerHTML = '';
+            });
+            userResults.append(item);
+          });
+        } catch {
+          userResults.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:#c00">Search failed</div>';
+        }
+      }, 300);
+    });
+
+    // ── Save / Cancel
+    const footer = document.createElement('div');
+    footer.style.cssText = 'display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #f0f0f0';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'modal-btn-primary';
+    saveBtn.textContent = 'Save';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'modal-btn-cancel';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => panel.classList.remove('open'));
+    footer.append(saveBtn, cancelBtn);
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'modal-error';
+    errorEl.style.display = 'none';
+
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+      errorEl.style.display = 'none';
+      try {
+        const updateParams = { resource: 'update_issue', issueId: issue.ID };
+        if (selectedStatus !== issue.status) updateParams.status = selectedStatus;
+        if (selectedUserId && selectedUserId !== issue.assignedTo?.ID) updateParams.assignedToID = selectedUserId;
+        await api(updateParams);
+        panel.classList.remove('open');
+        if (onSaved) onSaved();
+      } catch (e) {
+        errorEl.textContent = e.message;
+        errorEl.style.display = '';
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+      }
+    });
+
+    body.append(statusLabel, statusBtns, assignLabel, currentAssignee, userSearchInput, userResults, errorEl, footer);
+    panel.classList.add('open');
+  };
+
+  return panel;
+}
+
 // ── Extra CSS injected for approval rows + badges ─────────────────────────────
 
 const style = document.createElement('style');
@@ -853,6 +1040,11 @@ style.textContent = `
   .modal-assignee-chip { background:#e8f4fd; color:#1473e6; border:1px solid #1473e644; border-radius:12px; padding:3px 10px; font-size:12px; font-weight:600; }
   .modal-assign-me { background:none; border:none; color:#1473e6; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; font-family:inherit; }
   .modal-assign-me:hover { color:#0d66d0; }
+  .user-results { border:1px solid #e0e0e0; border-radius:4px; margin-top:4px; overflow:hidden; background:#fff; }
+  .user-results:empty { display:none; }
+  .user-result-item { padding:8px 12px; cursor:pointer; border-bottom:1px solid #f5f5f5; }
+  .user-result-item:last-child { border-bottom:none; }
+  .user-result-item:hover { background:#f0f4ff; }
   .modal-footer { display:flex; align-items:center; gap:10px; padding:16px 24px 20px; border-top:1px solid #f0f0f0; flex-wrap:wrap; }
   .modal-btn-primary { padding:8px 20px; background:#1473e6; color:#fff; border:none; border-radius:20px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
   .modal-btn-primary:hover { background:#0d66d0; }
