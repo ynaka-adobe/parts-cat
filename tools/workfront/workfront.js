@@ -332,7 +332,7 @@ async function buildApp() {
 
   await loadProjects();
 
-  // ── Select project → load active tab
+  // ── Select project → always reset to Tasks tab
   async function selectProject(p) {
     currentProjectId = p.ID;
     currentProject = p;
@@ -341,6 +341,9 @@ async function buildApp() {
     searchInput.value = '';
     detailPanel.classList.remove('open');
 
+    activeTab = 'tasks';
+    tabBar.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'tasks'));
+
     document.querySelectorAll('.rt-item').forEach((el) =>
       el.classList.toggle('active', el.id === `proj-${p.ID}`));
 
@@ -348,11 +351,7 @@ async function buildApp() {
     toolbarCount.textContent = '';
     recordsArea.innerHTML = '';
 
-    if (activeTab === 'documents') {
-      await loadDocuments(p);
-    } else {
-      await loadTasks(p);
-    }
+    await loadTasks(p);
   }
 
   async function loadDocuments(p) {
