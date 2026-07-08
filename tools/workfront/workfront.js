@@ -237,7 +237,14 @@ async function buildApp() {
   searchInput.placeholder = 'Search…';
   searchWrap.append(searchInput);
 
-  toolbar.append(toolbarTitle, toolbarCount, tabBar, searchWrap);
+  const newTaskBtn = document.createElement('button');
+  newTaskBtn.className = 'btn-new-task';
+  newTaskBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+    <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+  </svg> New Task`;
+  newTaskBtn.style.display = 'none';
+
+  toolbar.append(toolbarTitle, toolbarCount, tabBar, searchWrap, newTaskBtn);
   const recordsArea = document.createElement('div');
   recordsArea.className = 'records-area';
   recordsArea.append(emptyState('Select a project from the sidebar.'));
@@ -248,6 +255,137 @@ async function buildApp() {
 
   // ── Detail panel
   const detailPanel = buildDetailPanel();
+
+  // ── New Task modal
+  let cachedCurrentUser = null;
+  newTaskBtn.addEventListener('click', () => openNewTaskModal());
+
+  async function openNewTaskModal() {
+    if (!currentProject) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-header">
+        <div class="modal-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+          </svg>
+        </div>
+        <span class="modal-title">New Task</span>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="modal-label">Task Name <span style="color:#d7373f">*</span></label>
+          <input class="modal-input" id="nt-name" placeholder="Task Name" autocomplete="off">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Description</label>
+          <textarea class="modal-textarea" id="nt-desc" placeholder="Description" maxlength="4000"></textarea>
+          <div class="modal-charcount"><span id="nt-desc-count">0</span>/4000</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Assignments</label>
+          <div class="modal-assign-row">
+            <div id="nt-assignee-chip" class="modal-assignee-chip" style="display:none"></div>
+            <button class="modal-assign-me" id="nt-assign-me">Assign to me</button>
+          </div>
+        </div>
+        <div class="modal-field modal-row">
+          <div style="flex:1">
+            <label class="modal-label">Duration</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="modal-input" id="nt-duration" type="number" min="1" value="1" style="width:80px">
+              <span style="font-size:13px;color:#555">Days</span>
+            </div>
+          </div>
+          <div style="flex:1">
+            <label class="modal-label">Planned Completion Date</label>
+            <input class="modal-input" id="nt-date" type="date">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-primary" id="nt-submit">Create task</button>
+        <button class="modal-btn-cancel" id="nt-cancel">Cancel</button>
+      </div>`;
+
+    overlay.append(modal);
+    document.body.append(overlay);
+
+    const nameInput = modal.querySelector('#nt-name');
+    const descInput = modal.querySelector('#nt-desc');
+    const descCount = modal.querySelector('#nt-desc-count');
+    const assignMeBtn = modal.querySelector('#nt-assign-me');
+    const assigneeChip = modal.querySelector('#nt-assignee-chip');
+    const submitBtn = modal.querySelector('#nt-submit');
+    const cancelBtn = modal.querySelector('#nt-cancel');
+
+    nameInput.focus();
+
+    descInput.addEventListener('input', () => { descCount.textContent = descInput.value.length; });
+
+    let assignedToID = null;
+    assignMeBtn.addEventListener('click', async () => {
+      assignMeBtn.textContent = 'Loading…';
+      assignMeBtn.disabled = true;
+      try {
+        if (!cachedCurrentUser) {
+          const result = await api({ resource: 'current_user' });
+          cachedCurrentUser = Array.isArray(result) ? result[0] : result;
+        }
+        if (cachedCurrentUser?.ID) {
+          assignedToID = cachedCurrentUser.ID;
+          assigneeChip.textContent = cachedCurrentUser.name || cachedCurrentUser.emailAddr || 'Me';
+          assigneeChip.style.display = '';
+          assignMeBtn.style.display = 'none';
+        }
+      } catch {
+        assignMeBtn.textContent = 'Assign to me';
+        assignMeBtn.disabled = false;
+      }
+    });
+
+    const close = () => overlay.remove();
+    cancelBtn.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function onKey(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+    });
+
+    submitBtn.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      if (!name) { nameInput.classList.add('modal-input--error'); nameInput.focus(); return; }
+      nameInput.classList.remove('modal-input--error');
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating…';
+
+      const params = { resource: 'create_task', name, projectId: currentProject.ID };
+      if (descInput.value.trim()) params.description = descInput.value.trim();
+      const dur = modal.querySelector('#nt-duration').value;
+      if (dur && Number(dur) > 0) params.duration = dur;
+      const date = modal.querySelector('#nt-date').value;
+      if (date) params.plannedCompletionDate = date;
+      if (assignedToID) params.assignedToID = assignedToID;
+
+      try {
+        await api(params);
+        close();
+        await loadTasks(currentProject);
+      } catch (e) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create task';
+        const err = modal.querySelector('.modal-error') || document.createElement('p');
+        err.className = 'modal-error';
+        err.textContent = e.message;
+        modal.querySelector('.modal-footer').prepend(err);
+      }
+    });
+  }
 
   // ── State
   let allDocs = [];
@@ -270,10 +408,12 @@ async function buildApp() {
       searchInput.value = '';
       if (!currentProject) return;
       if (activeTab === 'tasks') {
+        newTaskBtn.style.display = '';
         toolbarCount.textContent = `(${allTasks.length})`;
         renderTasks(allTasks, '');
         if (!allTasks.length && currentProject) loadTasks(currentProject);
       } else {
+        newTaskBtn.style.display = 'none';
         toolbarCount.textContent = `(${allDocs.length})`;
         renderDocs(allDocs, '');
         if (!allDocs.length && currentProject) loadDocuments(currentProject);
@@ -342,6 +482,7 @@ async function buildApp() {
     detailPanel.classList.remove('open');
 
     activeTab = 'tasks';
+    newTaskBtn.style.display = '';
     tabBar.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'tasks'));
 
     document.querySelectorAll('.rt-item').forEach((el) =>
@@ -610,6 +751,34 @@ function buildDetailPanel() {
 
 const style = document.createElement('style');
 style.textContent = `
+  .btn-new-task { display:flex; align-items:center; gap:5px; padding:5px 12px; background:#1473e6; color:#fff; border:none; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; margin-left:8px; }
+  .btn-new-task:hover { background:#0d66d0; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  .modal { background:#fff; border-radius:8px; width:580px; max-width:calc(100vw - 32px); box-shadow:0 8px 32px rgba(0,0,0,.22); display:flex; flex-direction:column; max-height:90vh; overflow:auto; }
+  .modal-header { display:flex; align-items:center; gap:12px; padding:20px 24px 0; }
+  .modal-icon { width:36px; height:36px; background:#0099b0; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#fff; flex-shrink:0; }
+  .modal-title { font-size:18px; font-weight:700; color:#1d1d1d; }
+  .modal-body { padding:20px 24px; display:flex; flex-direction:column; gap:16px; }
+  .modal-field { display:flex; flex-direction:column; gap:6px; }
+  .modal-row { flex-direction:row !important; gap:16px; }
+  .modal-label { font-size:13px; font-weight:600; color:#333; }
+  .modal-input { padding:8px 12px; border:1px solid #d0d0d0; border-radius:4px; font-size:14px; font-family:inherit; outline:none; }
+  .modal-input:focus { border-color:#1473e6; box-shadow:0 0 0 2px #1473e622; }
+  .modal-input--error { border-color:#d7373f !important; box-shadow:0 0 0 2px #d7373f22 !important; }
+  .modal-textarea { padding:8px 12px; border:1px solid #d0d0d0; border-radius:4px; font-size:14px; font-family:inherit; resize:vertical; min-height:80px; outline:none; }
+  .modal-textarea:focus { border-color:#1473e6; box-shadow:0 0 0 2px #1473e622; }
+  .modal-charcount { font-size:11px; color:#aaa; }
+  .modal-assign-row { display:flex; align-items:center; gap:8px; }
+  .modal-assignee-chip { background:#e8f4fd; color:#1473e6; border:1px solid #1473e644; border-radius:12px; padding:3px 10px; font-size:12px; font-weight:600; }
+  .modal-assign-me { background:none; border:none; color:#1473e6; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; font-family:inherit; }
+  .modal-assign-me:hover { color:#0d66d0; }
+  .modal-footer { display:flex; align-items:center; gap:10px; padding:16px 24px 20px; border-top:1px solid #f0f0f0; flex-wrap:wrap; }
+  .modal-btn-primary { padding:8px 20px; background:#1473e6; color:#fff; border:none; border-radius:20px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .modal-btn-primary:hover { background:#0d66d0; }
+  .modal-btn-primary:disabled { background:#aaa; cursor:not-allowed; }
+  .modal-btn-cancel { padding:8px 20px; background:none; border:1px solid #d0d0d0; border-radius:20px; font-size:14px; font-weight:600; cursor:pointer; color:#333; font-family:inherit; }
+  .modal-btn-cancel:hover { background:#f5f5f5; }
+  .modal-error { color:#d7373f; font-size:12px; margin:0; flex-basis:100%; }
   .tab-bar { display:flex; gap:2px; margin:0 4px; }
   .tab-btn { padding:3px 12px; font-size:12px; font-weight:600; border:1px solid transparent; border-bottom:none; border-radius:4px 4px 0 0; background:none; color:#888; cursor:pointer; font-family:inherit; }
   .tab-btn:hover { color:#1473e6; }

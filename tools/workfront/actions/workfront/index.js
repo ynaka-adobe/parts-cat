@@ -89,6 +89,17 @@ async function main(params) {
       data = await wfRequest('GET',
         `/TASK/search?projectID=${projectId}&fields=ID,taskNumber,name,status,percentComplete,assignedTo:name,plannedCompletionDate&$$FIRST=0&$$LIMIT=${limit}`,
         domain, token);
+    } else if (resource === 'current_user') {
+      data = await wfRequest('GET', `/USER/search?ID=$$USER.ID&fields=ID,name,emailAddr&$$LIMIT=1`, domain, token);
+    } else if (resource === 'create_task') {
+      if (!params.name) return { statusCode: 400, body: JSON.stringify({ error: 'Task name is required' }) };
+      if (!projectId) return { statusCode: 400, body: JSON.stringify({ error: 'projectId is required' }) };
+      const taskBody = { name: params.name, projectID: projectId };
+      if (params.description) taskBody.description = params.description;
+      if (params.plannedCompletionDate) taskBody.plannedCompletionDate = params.plannedCompletionDate;
+      if (params.duration) { taskBody.duration = Number(params.duration); taskBody.durationUnit = 'D'; }
+      if (params.assignedToID) taskBody.assignedToID = params.assignedToID;
+      data = await wfRequest('POST', `/TASK?fields=ID,name,taskNumber,status`, domain, token, taskBody);
     } else {
       return { statusCode: 400, body: JSON.stringify({ error: `Unknown resource "${resource}"` }) };
     }
