@@ -7,10 +7,22 @@ const REDIRECT_URI = 'https://main--parts-cat--ynaka-adobe.aem.live/tools/workfr
 
 // ── OAuth helpers ─────────────────────────────────────────────────────────────
 
-function storedToken() { return localStorage.getItem('wf_access_token'); }
+function storedToken() {
+  const token = localStorage.getItem('wf_access_token');
+  const expiry = Number(localStorage.getItem('wf_token_expiry') || 0);
+  if (token && expiry && Date.now() > expiry) {
+    localStorage.removeItem('wf_access_token');
+    return null;
+  }
+  return token || null;
+}
 function storedRefresh() { return localStorage.getItem('wf_refresh_token'); }
-function saveTokens({ access_token, refresh_token }) {
-  if (access_token) localStorage.setItem('wf_access_token', access_token);
+function saveTokens({ access_token, refresh_token, expires_in }) {
+  if (access_token) {
+    localStorage.setItem('wf_access_token', access_token);
+    const ttl = (Number(expires_in) || 36000) * 1000;
+    localStorage.setItem('wf_token_expiry', String(Date.now() + ttl));
+  }
   if (refresh_token) localStorage.setItem('wf_refresh_token', refresh_token);
 }
 
@@ -37,21 +49,34 @@ async function ensureToken() {
     localStorage.removeItem('wf_refresh_token');
   }
 
-  // Inside DA (iframe): use popup so DA context is preserved
-  if (window !== window.top) {
-    return new Promise((resolve) => {
-      const popup = window.open(buildAuthUrl(), 'wf_auth', 'width=600,height=700,left=200,top=100');
-      const timer = setInterval(() => {
-        const t = storedToken();
-        if (t) { clearInterval(timer); resolve(t); return; }
-        if (!popup || popup.closed) { clearInterval(timer); resolve(null); }
-      }, 500);
-    });
-  }
+  return null; // caller handles missing token by showing connect screen
+}
 
-  // Top-level: redirect directly
-  location.href = buildAuthUrl();
-  return null;
+function showConnectScreen() {
+  document.body.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;font-family:sans-serif';
+  const title = document.createElement('p');
+  title.style.cssText = 'font-size:15px;color:#444;margin:0';
+  title.textContent = 'Connect to Workfront to continue.';
+  const btn = document.createElement('button');
+  btn.style.cssText = 'padding:10px 24px;background:#1473e6;color:#fff;border:none;border-radius:4px;font-size:14px;cursor:pointer';
+  btn.textContent = 'Connect to Workfront';
+  btn.addEventListener('click', () => {
+    window.open(buildAuthUrl(), '_blank', 'width=620,height=720');
+    btn.textContent = 'Waiting… click here after authorizing';
+    btn.style.background = '#888';
+    // Poll for token after popup
+    const timer = setInterval(async () => {
+      const t = storedToken();
+      if (t) {
+        clearInterval(timer);
+        location.reload();
+      }
+    }, 1000);
+  });
+  wrap.append(title, btn);
+  document.body.append(wrap);
 }
 
 // ── Runtime fetch ─────────────────────────────────────────────────────────────
@@ -445,11 +470,12 @@ document.head.append(style);
       if (tokens.access_token) {
         saveTokens(tokens);
         history.replaceState({}, '', location.pathname);
-        // If we're a popup opened by the DA panel, close and let the parent continue
-        if (window.opener && window.opener !== window) {
-          window.close();
-          return;
-        }
+        // Always try to close — works when opened via window.open()
+        // even if window.opener was cleared by cross-origin IMS navigation
+        window.close();
+        // If window.close() was a no-op (direct navigation), continue to app
+        await new Promise((r) => setTimeout(r, 300));
+        if (document.hidden) return; // closed successfully
       } else {
         document.body.innerHTML = `<p class="loading error">Auth failed: ${esc(tokens.message || JSON.stringify(tokens))}</p>`;
         return;
@@ -459,6 +485,9 @@ document.head.append(style);
       return;
     }
   }
+
+  const token = await ensureToken();
+  if (!token) { showConnectScreen(); return; }
 
   document.body.innerHTML = '<p class="loading">Loading Workfront projects…</p>';
 
