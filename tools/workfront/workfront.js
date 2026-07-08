@@ -145,7 +145,11 @@ function badge(text, color) {
 
 function formatDate(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  // Workfront returns "2024-03-15T00:00:00:000+0000" — colon before ms instead of dot
+  const normalized = iso.replace(/T(\d{2}:\d{2}:\d{2}):(\d{3})/, 'T$1.$2');
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function esc(str) {
