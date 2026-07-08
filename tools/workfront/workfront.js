@@ -72,7 +72,6 @@ function showConnectScreen() {
     btn.textContent = 'Authorize in the new tab, then return here…';
     btn.style.background = '#888';
 
-    // Listen for token via BroadcastChannel (works across partitioned storage)
     let done = false;
     const finish = (tokenData) => {
       if (done) return;
@@ -81,12 +80,22 @@ function showConnectScreen() {
       location.reload();
     };
 
+    // postMessage from same-origin popup (most reliable across partitioning)
+    const onMessage = (e) => {
+      if (e.origin === location.origin && e.data?.type === 'wf_tokens') {
+        window.removeEventListener('message', onMessage);
+        finish(e.data);
+      }
+    };
+    window.addEventListener('message', onMessage);
+
+    // BroadcastChannel fallback
     try {
       const bc = new BroadcastChannel(AUTH_CHANNEL);
       bc.onmessage = (e) => { if (e.data.type === 'wf_tokens') { bc.close(); finish(e.data); } };
     } catch {}
 
-    // Fallback: poll localStorage (works when storage is not partitioned)
+    // localStorage poll fallback
     const timer = setInterval(() => {
       const t = storedToken();
       if (t) { clearInterval(timer); finish({ access_token: t }); }
@@ -489,14 +498,19 @@ document.head.append(style);
         history.replaceState({}, '', location.pathname);
         // Always try to close — works when opened via window.open()
         // even if window.opener was cleared by cross-origin IMS navigation
-        // Broadcast tokens to the DA iframe before closing
-        try {
-          const bc = new BroadcastChannel(AUTH_CHANNEL);
-          bc.postMessage({ type: 'wf_tokens', ...tokens });
-          setTimeout(() => bc.close(), 500);
-        } catch {}
+        // Write tokens directly into opener's localStorage partition (bypasses Chrome storage partitioning)
+        // and send postMessage as fallback
+        if (window.opener && !window.opener.closed) {
+          try {
+            const ttl = (Number(tokens.expires_in) || 36000) * 1000;
+            window.opener.localStorage.setItem('wf_access_token', tokens.access_token);
+            if (tokens.refresh_token) window.opener.localStorage.setItem('wf_refresh_token', tokens.refresh_token);
+            window.opener.localStorage.setItem('wf_token_expiry', String(Date.now() + ttl));
+          } catch {}
+          try { window.opener.postMessage({ type: 'wf_tokens', ...tokens }, location.origin); } catch {}
+          try { window.opener.location.reload(); } catch {}
+        }
         window.close();
-        // window.close() is blocked after cross-origin navigation — show close prompt
         await new Promise((r) => setTimeout(r, 400));
         document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;flex-direction:column;gap:12px">
           <p style="font-size:16px;color:#2d9d78;margin:0">✓ Connected to Workfront</p>
