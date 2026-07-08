@@ -333,12 +333,6 @@ body {
 
 .campaign-card { cursor: pointer; }
 .campaign-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
-.campaign-card:hover .campaign-name::after {
-  content: ' ↗';
-  font-size: 13px;
-  color: #ffcb00;
-  font-weight: 400;
-}
 
 .campaign-main { grid-column: 1; grid-row: 1; }
 .campaign-side { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 12px; min-width: 280px; }
@@ -425,6 +419,25 @@ body {
 
 .btn-publish:hover { background: #258c6b; }
 .btn-publish:disabled { background: #aaa; cursor: not-allowed; }
+
+.btn-insert {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  background: #1473e6;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s;
+  white-space: nowrap;
+}
+.btn-insert:hover { background: #0d66d0; }
+.btn-insert svg { flex-shrink: 0; }
 
 .btn-wf {
   padding: 6px 14px;

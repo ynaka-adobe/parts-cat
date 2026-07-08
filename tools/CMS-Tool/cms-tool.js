@@ -193,11 +193,7 @@ function buildCampaignCard(activity, wfProject, onAction) {
     monitorBtn.className = 'btn-monitor';
     monitorBtn.textContent = 'Monitor';
     monitorBtn.addEventListener('click', (e) => { e.stopPropagation(); onAction('monitor', activity); });
-    const detailBtn = document.createElement('button');
-    detailBtn.className = 'btn-monitor';
-    detailBtn.textContent = 'Details';
-    detailBtn.addEventListener('click', (e) => { e.stopPropagation(); onAction('detail', activity); });
-    actions.append(monitorBtn, detailBtn);
+    actions.append(monitorBtn);
   } else if (isReady) {
     const publishBtn = document.createElement('button');
     publishBtn.className = 'btn-publish';
@@ -224,6 +220,17 @@ function buildCampaignCard(activity, wfProject, onAction) {
     monitorBtn.addEventListener('click', (e) => { e.stopPropagation(); onAction('monitor', activity); });
     actions.append(monitorBtn);
   }
+
+  // Insert into page button — always visible
+  const insertBtn = document.createElement('button');
+  insertBtn.className = 'btn-insert';
+  insertBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="13" height="13">
+    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+  </svg> Insert into page`;
+  insertBtn.title = `Insert ${activity.name} block at cursor`;
+  insertBtn.addEventListener('click', (e) => { e.stopPropagation(); onAction('insert', activity); });
+  actions.append(insertBtn);
 
   // WF link button
   if (wfProject) {
@@ -280,7 +287,7 @@ function buildCampaignCard(activity, wfProject, onAction) {
 
   card.append(main, side, statsRow);
 
-  card.addEventListener('click', () => onAction('insert', activity, wfProject));
+  card.addEventListener('click', () => onAction('detail', activity, wfProject));
 
   return card;
 }
