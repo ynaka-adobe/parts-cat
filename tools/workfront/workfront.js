@@ -225,6 +225,7 @@ async function buildApp() {
   tabBar.className = 'tab-bar';
   tabBar.innerHTML = `
     <button class="tab-btn active" data-tab="tasks">Tasks</button>
+    <button class="tab-btn" data-tab="issues">Issues</button>
     <button class="tab-btn" data-tab="documents">Documents</button>`;
 
   const searchWrap = document.createElement('div');
@@ -390,14 +391,16 @@ async function buildApp() {
   // ── State
   let allDocs = [];
   let allTasks = [];
+  let allIssues = [];
   let currentProjectId = null;
   let currentProject = null;
   let activeFilter = 'member';
   let activeTab = 'tasks';
 
   searchInput.addEventListener('input', () => {
-    if (activeTab === 'documents') renderDocs(allDocs, searchInput.value);
-    else renderTasks(allTasks, searchInput.value);
+    if (activeTab === 'tasks') renderTasks(allTasks, searchInput.value);
+    else if (activeTab === 'issues') renderIssues(allIssues, searchInput.value);
+    else renderDocs(allDocs, searchInput.value);
   });
 
   tabBar.querySelectorAll('.tab-btn').forEach((btn) => {
@@ -412,6 +415,11 @@ async function buildApp() {
         toolbarCount.textContent = `(${allTasks.length})`;
         renderTasks(allTasks, '');
         if (!allTasks.length && currentProject) loadTasks(currentProject);
+      } else if (activeTab === 'issues') {
+        newTaskBtn.style.display = 'none';
+        toolbarCount.textContent = `(${allIssues.length})`;
+        renderIssues(allIssues, '');
+        if (!allIssues.length && currentProject) loadIssues(currentProject);
       } else {
         newTaskBtn.style.display = 'none';
         toolbarCount.textContent = `(${allDocs.length})`;
@@ -478,6 +486,7 @@ async function buildApp() {
     currentProject = p;
     allDocs = [];
     allTasks = [];
+    allIssues = [];
     searchInput.value = '';
     detailPanel.classList.remove('open');
 
@@ -518,6 +527,19 @@ async function buildApp() {
         : [];
       toolbarCount.textContent = `(${allTasks.length})`;
       renderTasks(allTasks, '');
+    } catch (e) {
+      recordsArea.innerHTML = `<p class="loading error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  async function loadIssues(p) {
+    recordsArea.innerHTML = '';
+    recordsArea.append(spinner());
+    try {
+      const issues = await api({ resource: 'issues', projectId: p.ID, limit: 200 });
+      allIssues = Array.isArray(issues) ? issues : [];
+      toolbarCount.textContent = `(${allIssues.length})`;
+      renderIssues(allIssues, '');
     } catch (e) {
       recordsArea.innerHTML = `<p class="loading error">Error: ${esc(e.message)}</p>`;
     }
@@ -630,6 +652,65 @@ async function buildApp() {
             <span style="font-size:11px;color:#666;white-space:nowrap">${pct}</span>
           </div>
         </td>
+        <td><span class="badge" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${esc(st.label)}</span></td>`;
+      tbody.append(tr);
+    });
+
+    table.append(tbody);
+    wrap.append(table);
+    recordsArea.append(wrap);
+  }
+
+  // ── Render issues table
+  const ISSUE_STATUS = {
+    NEW:  { label: 'New',         color: '#1473e6' },
+    INP:  { label: 'In Progress', color: '#e68619' },
+    CPL:  { label: 'Complete',    color: '#2d9d78' },
+    RES:  { label: 'Resolved',    color: '#2d9d78' },
+    ONH:  { label: 'On Hold',     color: '#888' },
+    CLO:  { label: 'Closed',      color: '#888' },
+    WFM:  { label: 'Won\'t Fix',  color: '#c00' },
+  };
+  const ISSUE_PRIORITY = { 0: '—', 1: 'Urgent', 2: 'High', 3: 'Normal', 4: 'Low' };
+  const PRIORITY_COLOR = { 1: '#d7373f', 2: '#e68619', 3: '#1473e6', 4: '#888' };
+
+  function renderIssues(issues, q) {
+    const filtered = q
+      ? issues.filter((i) => (i.name || '').toLowerCase().includes(q.toLowerCase()))
+      : issues;
+
+    recordsArea.innerHTML = '';
+    if (!filtered.length) {
+      recordsArea.append(emptyState(q ? 'No issues match.' : 'No issues in this project.'));
+      return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'records-table-wrap';
+
+    const table = document.createElement('table');
+    table.className = 'records-table';
+    table.innerHTML = `<thead><tr>
+      <th>Issue Name</th>
+      <th>Priority</th>
+      <th>Assigned To</th>
+      <th>Due Date</th>
+      <th>Entered By</th>
+      <th>Status</th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    filtered.forEach((issue) => {
+      const st = ISSUE_STATUS[issue.status] || { label: issue.status || '—', color: '#888' };
+      const pri = ISSUE_PRIORITY[issue.priority] || '—';
+      const priColor = PRIORITY_COLOR[issue.priority] || '#888';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="name-cell">${esc(issue.name || '(Untitled)')}</td>
+        <td><span style="font-size:12px;font-weight:600;color:${priColor}">${esc(pri)}</span></td>
+        <td>${esc(issue.assignedTo?.name || '—')}</td>
+        <td>${esc(formatDate(issue.plannedCompletionDate))}</td>
+        <td>${esc(issue.enteredBy?.name || '—')}</td>
         <td><span class="badge" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${esc(st.label)}</span></td>`;
       tbody.append(tr);
     });

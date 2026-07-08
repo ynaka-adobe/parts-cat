@@ -89,6 +89,10 @@ async function main(params) {
       data = await wfRequest('GET',
         `/TASK/search?projectID=${projectId}&fields=ID,taskNumber,name,status,percentComplete,assignedTo:name,plannedCompletionDate&$$FIRST=0&$$LIMIT=${limit}`,
         domain, token);
+    } else if (resource === 'issues' && projectId) {
+      data = await wfRequest('GET',
+        `/OPTASK/search?projectID=${projectId}&fields=ID,name,status,priority,assignedTo:name,plannedCompletionDate,enteredBy:name,entryDate&$$FIRST=0&$$LIMIT=${limit}`,
+        domain, token);
     } else if (resource === 'current_user') {
       data = await wfRequest('GET', `/USER/search?ID=$$USER.ID&fields=ID,name,emailAddr&$$LIMIT=1`, domain, token);
     } else if (resource === 'create_task') {
