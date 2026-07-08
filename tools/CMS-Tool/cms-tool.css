@@ -881,6 +881,31 @@ body {
   font-style: italic;
 }
 
+/* ── Campaign type picker ────────────────────────────────────── */
+.type-option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+
+.type-option-row:hover { border-color: #aaa; background: #fafafa; }
+.type-option-row.selected { border-color: #ffcb00; background: #fffbea; }
+
+.type-option-row input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ffcb00;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* ── Connect / auth screen ───────────────────────────────────── */
 .connect-screen {
   display: flex;

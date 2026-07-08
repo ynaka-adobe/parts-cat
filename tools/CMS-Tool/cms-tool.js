@@ -429,86 +429,127 @@ function buildDetailPanel() {
 
 // ── New Campaign modal ─────────────────────────────────────────────────────────
 
+const CAMPAIGN_TYPES = [
+  { value: 'banner',   label: 'Create a Banner' },
+  { value: 'landing',  label: 'Create a Campaign Landing Page' },
+  { value: 'specials', label: 'Create Specials' },
+];
+
 async function showNewCampaignModal(wfProjects, onCreated) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
 
   const modal = document.createElement('div');
   modal.className = 'modal';
-  modal.innerHTML = `
-    <div class="modal-header">
-      <div class="modal-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
-          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
-        </svg>
-      </div>
-      <span class="modal-title">New Campaign</span>
-    </div>
-    <div class="modal-body">
-      <div class="modal-field">
-        <label class="modal-label">Campaign Name <span class="modal-required">*</span></label>
-        <input class="modal-input" id="nc-name" placeholder="e.g. Summer Parts Promo" autocomplete="off">
-      </div>
-      <div class="modal-field">
-        <label class="modal-label">Description</label>
-        <textarea class="modal-textarea" id="nc-desc" placeholder="Describe the campaign goal…"></textarea>
-      </div>
-      <div class="modal-row">
-        <div class="modal-field">
-          <label class="modal-label">Type</label>
-          <select class="modal-select" id="nc-type">
-            <option value="xt">Experience Targeting (XT)</option>
-            <option value="ab">A/B Test</option>
-          </select>
-        </div>
-        <div class="modal-field">
-          <label class="modal-label">Mbox / Location</label>
-          <input class="modal-input" id="nc-mbox" value="target-global-mbox">
-        </div>
-      </div>
-      ${wfProjects && wfProjects.length ? `
-      <div class="modal-field">
-        <label class="modal-label">Workfront Project (optional)</label>
-        <select class="modal-select" id="nc-wf">
-          <option value="">— None —</option>
-          ${wfProjects.map((p) => `<option value="${esc(p.ID)}">${esc(p.name)}</option>`).join('')}
-        </select>
-      </div>` : ''}
-    </div>
-    <div class="modal-footer">
-      <button class="modal-btn-primary" id="nc-submit">Create Campaign</button>
-      <button class="modal-btn-cancel" id="nc-cancel">Cancel</button>
-    </div>`;
-
-  overlay.append(modal);
-  document.body.append(overlay);
-
-  const nameInput = modal.querySelector('#nc-name');
-  const submitBtn = modal.querySelector('#nc-submit');
-  const cancelBtn = modal.querySelector('#nc-cancel');
-
-  nameInput.focus();
 
   const close = () => overlay.remove();
-  cancelBtn.addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   document.addEventListener('keydown', function onKey(e) {
     if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
   });
 
-  submitBtn.addEventListener('click', async () => {
-    const name = nameInput.value.trim();
-    if (!name) { nameInput.classList.add('error'); nameInput.focus(); return; }
-    nameInput.classList.remove('error');
+  // ── Step 1: campaign type picker ──────────────────────────────────────────
+  function showTypePicker() {
+    let selected = null;
 
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Creating…';
+    modal.innerHTML = `
+      <div class="modal-header" style="padding-bottom:4px">
+        <div class="modal-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+          </svg>
+        </div>
+        <span class="modal-title">Create a Campaign</span>
+      </div>
+      <div class="modal-body" style="gap:10px">
+        <p class="modal-label" style="margin:0">Pick One to Create:</p>
+        <div id="type-list" style="display:flex;flex-direction:column;gap:2px"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-primary" id="type-next" disabled>Create</button>
+        <button class="modal-btn-cancel" id="type-cancel">Cancel</button>
+      </div>`;
 
-    try {
-      const mbox = modal.querySelector('#nc-mbox')?.value || 'target-global-mbox';
-      const result = await createTargetActivity({ name, mbox });
-      close();
+    const typeList = modal.querySelector('#type-list');
+    const nextBtn = modal.querySelector('#type-next');
+
+    CAMPAIGN_TYPES.forEach(({ value, label }) => {
+      const row = document.createElement('label');
+      row.className = 'type-option-row';
+      row.innerHTML = `<input type="radio" name="campaign-type" value="${value}"> ${esc(label)}`;
+      row.querySelector('input').addEventListener('change', () => {
+        selected = value;
+        nextBtn.disabled = false;
+        typeList.querySelectorAll('.type-option-row').forEach((r) => r.classList.remove('selected'));
+        row.classList.add('selected');
+      });
+      typeList.append(row);
+    });
+
+    modal.querySelector('#type-cancel').addEventListener('click', close);
+    nextBtn.addEventListener('click', () => { if (selected) showDetailsForm(selected); });
+  }
+
+  // ── Step 2: campaign details form ─────────────────────────────────────────
+  function showDetailsForm(campaignType) {
+    const typeLabel = CAMPAIGN_TYPES.find((t) => t.value === campaignType)?.label || campaignType;
+
+    modal.innerHTML = `
+      <div class="modal-header">
+        <div class="modal-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+          </svg>
+        </div>
+        <span class="modal-title">${esc(typeLabel)}</span>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="modal-label">Campaign Name <span class="modal-required">*</span></label>
+          <input class="modal-input" id="nc-name" placeholder="e.g. Summer Parts Promo" autocomplete="off">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Description</label>
+          <textarea class="modal-textarea" id="nc-desc" placeholder="Describe the campaign goal…"></textarea>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Mbox / Location</label>
+          <input class="modal-input" id="nc-mbox" value="target-global-mbox">
+        </div>
+        ${wfProjects && wfProjects.length ? `
+        <div class="modal-field">
+          <label class="modal-label">Workfront Project (optional)</label>
+          <select class="modal-select" id="nc-wf">
+            <option value="">— None —</option>
+            ${wfProjects.map((p) => `<option value="${esc(p.ID)}">${esc(p.name)}</option>`).join('')}
+          </select>
+        </div>` : ''}
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-primary" id="nc-submit">Create Campaign</button>
+        <button class="modal-btn-cancel" id="nc-back">← Back</button>
+      </div>`;
+
+    const nameInput = modal.querySelector('#nc-name');
+    const submitBtn = modal.querySelector('#nc-submit');
+    nameInput.focus();
+
+    modal.querySelector('#nc-back').addEventListener('click', showTypePicker);
+
+    submitBtn.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      if (!name) { nameInput.classList.add('error'); nameInput.focus(); return; }
+      nameInput.classList.remove('error');
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating…';
+
+      try {
+        const mbox = modal.querySelector('#nc-mbox')?.value || 'target-global-mbox';
+        const result = await createTargetActivity({ name, mbox, campaignType });
+        close();
       onCreated(result);
     } catch (err) {
       submitBtn.disabled = false;
@@ -518,6 +559,11 @@ async function showNewCampaignModal(wfProjects, onCreated) {
       errEl.textContent = `Error: ${err.message}`;
     }
   });
+  }
+
+  overlay.append(modal);
+  document.body.append(overlay);
+  showTypePicker();
 }
 
 // ── WF connect prompt ──────────────────────────────────────────────────────────
