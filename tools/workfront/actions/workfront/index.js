@@ -67,9 +67,15 @@ async function main(params) {
     let data;
 
     if (resource === 'projects') {
-      const ownerFilter = params.filter === 'owner' ? '&ownerID=$$USER.ID' : '';
+      let filterQs = '';
+      if (params.filter === 'owner') {
+        filterQs = '&ownerID=$$USER.ID';
+      } else {
+        // "I'm On" — only projects where the current user is a team member
+        filterQs = '&projectUsers:userID=$$USER.ID';
+      }
       data = await wfRequest('GET',
-        `/PROJ/search?fields=ID,name,status,percentComplete,plannedCompletionDate,owner:name&$$LIMIT=${limit}&$$FIRST=0${ownerFilter}`,
+        `/PROJ/search?fields=ID,name,status,percentComplete,plannedCompletionDate,owner:name&$$LIMIT=${limit}&$$FIRST=0${filterQs}`,
         domain, token);
     } else if (resource === 'documents' && projectId) {
       data = await wfRequest('GET',
