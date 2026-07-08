@@ -429,6 +429,62 @@ function buildDetailPanel() {
 
 // ── New Campaign modal ─────────────────────────────────────────────────────────
 
+// ── Block HTML builder ─────────────────────────────────────────────────────────
+// Produces the DA table markup that EDS decorates into the named block.
+
+function buildBlockHTML(campaignType, variant, campaignName) {
+  const row = (cells) => `<tr>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`;
+  const table = (header, ...rows) =>
+    `<table><thead><tr><th colspan="${Math.max(...rows.map((r) => r.length), 1)}">${header}</th></tr></thead>`
+    + `<tbody>${rows.map(row).join('')}</tbody></table>`;
+
+  if (campaignType === 'banner') {
+    const blockName = `Banner (${variant})`;
+    return table(blockName,
+      ['<p>[Add banner image]</p>', `<p>${esc(campaignName)}</p><p>[Add description]</p><p><a href="#">Learn More</a></p>`]);
+  }
+
+  if (campaignType === 'landing') {
+    if (variant === 'split') {
+      return table('Columns',
+        ['<p>[Add image]</p>', `<h2>${esc(campaignName)}</h2><p>[Add description]</p><p><a href="#">Shop Now</a></p>`]);
+    }
+    if (variant === 'cards') {
+      return `<h2>${esc(campaignName)}</h2>`
+        + table('Cards',
+          ['<p>[Add image]</p><p>[Card 1 title]</p><p>[Description]</p>',
+           '<p>[Add image]</p><p>[Card 2 title]</p><p>[Description]</p>',
+           '<p>[Add image]</p><p>[Card 3 title]</p><p>[Description]</p>']);
+    }
+    // hero (default)
+    return table('Hero', ['<p>[Add hero image]</p>'])
+      + `<h2>${esc(campaignName)}</h2><p>[Add campaign description]</p><p><a href="#">Shop Now</a></p>`;
+  }
+
+  if (campaignType === 'specials') {
+    const bannerVariant = variant === 'flash-sale' ? 'leader-board'
+      : variant === 'seasonal' ? 'large-rectangle' : 'medium-rectangle';
+    return table(`Banner (${bannerVariant})`,
+      ['<p>[Add image]</p>', `<h3>${esc(campaignName)}</h3><p>[Add offer details]</p><p><a href="#">Shop Now</a></p>`]);
+  }
+
+  return `<p>${esc(campaignName)}</p>`;
+}
+
+// ── Toast notification ─────────────────────────────────────────────────────────
+
+function showToast(msg, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast--${type}`;
+  toast.textContent = msg;
+  document.body.append(toast);
+  requestAnimationFrame(() => toast.classList.add('toast--visible'));
+  setTimeout(() => {
+    toast.classList.remove('toast--visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
 const CAMPAIGN_TYPES = [
   { value: 'banner',   label: 'Create a Banner' },
   { value: 'landing',  label: 'Create a Campaign Landing Page' },
@@ -602,7 +658,7 @@ const CAMPAIGN_VARIANTS = {
   ],
 };
 
-async function showNewCampaignModal(wfProjects, onCreated) {
+async function showNewCampaignModal(wfProjects, sdk, onCreated) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
 
@@ -740,8 +796,8 @@ async function showNewCampaignModal(wfProjects, onCreated) {
           <textarea class="modal-textarea" id="nc-desc" placeholder="Describe the campaign goal…"></textarea>
         </div>
         <div class="modal-field">
-          <label class="modal-label">Mbox / Location</label>
-          <input class="modal-input" id="nc-mbox" value="target-global-mbox">
+          <label class="modal-label">Target Mbox</label>
+          <div style="font-size:13px;color:#555;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:4px;padding:8px 12px;font-family:monospace">${campaignType}-${variant}</div>
         </div>
         ${wfProjects && wfProjects.length ? `
         <div class="modal-field">
@@ -771,19 +827,30 @@ async function showNewCampaignModal(wfProjects, onCreated) {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Creating…';
 
+      // Derive mbox from campaign type + variant (e.g. "banner-leader-board")
+      const mbox = `${campaignType}-${variant}`;
+
       try {
-        const mbox = modal.querySelector('#nc-mbox')?.value || 'target-global-mbox';
+        // 1. Insert block table at the DA editor cursor position
+        const blockHTML = buildBlockHTML(campaignType, variant, name);
+        if (sdk?.actions?.sendHTML) {
+          await sdk.actions.sendHTML(blockHTML);
+        }
+
+        // 2. Create Target activity with the variant-derived mbox
         const result = await createTargetActivity({ name, mbox, campaignType, variant });
+
         close();
-      onCreated(result);
-    } catch (err) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Create Campaign';
-      let errEl = modal.querySelector('.modal-error');
-      if (!errEl) { errEl = document.createElement('p'); errEl.className = 'modal-error'; modal.querySelector('.modal-footer').prepend(errEl); }
-      errEl.textContent = `Error: ${err.message}`;
-    }
-  });
+        showToast(`✓ "${name}" created — mbox: ${mbox}`);
+        onCreated(result);
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Campaign';
+        let errEl = modal.querySelector('.modal-error');
+        if (!errEl) { errEl = document.createElement('p'); errEl.className = 'modal-error'; modal.querySelector('.modal-footer').prepend(errEl); }
+        errEl.textContent = `Error: ${err.message}`;
+      }
+    });
   }
 
   overlay.append(modal);
@@ -799,7 +866,7 @@ function buildWfAuthUrl() {
 
 // ── Main app ───────────────────────────────────────────────────────────────────
 
-async function buildApp(activities, wfProjects) {
+async function buildApp(activities, wfProjects, sdk) {
   const shell = document.createElement('div');
   shell.className = 'app-shell';
 
@@ -840,7 +907,7 @@ async function buildApp(activities, wfProjects) {
   newBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
     <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
   </svg> New Campaign`;
-  newBtn.addEventListener('click', () => showNewCampaignModal(wfProjects, (result) => { location.reload(); }));
+  newBtn.addEventListener('click', () => showNewCampaignModal(wfProjects, sdk, (result) => { location.reload(); }));
 
   const bellBtn = document.createElement('button');
   bellBtn.className = 'header-icon-btn';
@@ -1049,7 +1116,7 @@ async function handleWfCallback(code) {
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
 
 (async function init() {
-  await Promise.race([DA_SDK, new Promise((r) => setTimeout(r, 1500))]);
+  const sdk = await Promise.race([DA_SDK, new Promise((r) => setTimeout(r, 1500))]);
 
   // WF OAuth callback
   const params = new URLSearchParams(location.search);
@@ -1079,7 +1146,7 @@ async function handleWfCallback(code) {
   }
 
   document.body.innerHTML = '';
-  await buildApp(activities, wfProjects);
+  await buildApp(activities, wfProjects, sdk);
 }());
 
 // ── Sample activities (shown when Target runtime is unavailable) ───────────────
