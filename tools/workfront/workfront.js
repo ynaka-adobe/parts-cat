@@ -6,6 +6,7 @@ const WF_CLIENT_ID = '56e219a0a1eeae8feb55c444e3d8a8b6';
 const REDIRECT_URI = 'https://main--parts-cat--ynaka-adobe.aem.live/tools/workfront/workfront.html';
 
 // ── OAuth helpers ─────────────────────────────────────────────────────────────
+const AUTH_CHANNEL = 'wf_auth_tokens';
 
 function storedToken() {
   const token = localStorage.getItem('wf_access_token');
@@ -62,17 +63,33 @@ function showConnectScreen() {
   const btn = document.createElement('button');
   btn.style.cssText = 'padding:10px 24px;background:#1473e6;color:#fff;border:none;border-radius:4px;font-size:14px;cursor:pointer';
   btn.textContent = 'Connect to Workfront';
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
+    // Request first-party storage access (user gesture required)
+    if (document.requestStorageAccess) {
+      try { await document.requestStorageAccess(); } catch {}
+    }
     window.open(buildAuthUrl(), '_blank', 'width=620,height=720');
-    btn.textContent = 'Waiting… click here after authorizing';
+    btn.textContent = 'Authorize in the new tab, then return here…';
     btn.style.background = '#888';
-    // Poll for token after popup
-    const timer = setInterval(async () => {
+
+    // Listen for token via BroadcastChannel (works across partitioned storage)
+    let done = false;
+    const finish = (tokenData) => {
+      if (done) return;
+      done = true;
+      saveTokens(tokenData);
+      location.reload();
+    };
+
+    try {
+      const bc = new BroadcastChannel(AUTH_CHANNEL);
+      bc.onmessage = (e) => { if (e.data.type === 'wf_tokens') { bc.close(); finish(e.data); } };
+    } catch {}
+
+    // Fallback: poll localStorage (works when storage is not partitioned)
+    const timer = setInterval(() => {
       const t = storedToken();
-      if (t) {
-        clearInterval(timer);
-        location.reload();
-      }
+      if (t) { clearInterval(timer); finish({ access_token: t }); }
     }, 1000);
   });
   wrap.append(title, btn);
@@ -472,10 +489,15 @@ document.head.append(style);
         history.replaceState({}, '', location.pathname);
         // Always try to close — works when opened via window.open()
         // even if window.opener was cleared by cross-origin IMS navigation
+        // Broadcast tokens to the DA iframe before closing
+        try {
+          const bc = new BroadcastChannel(AUTH_CHANNEL);
+          bc.postMessage({ type: 'wf_tokens', ...tokens });
+          setTimeout(() => bc.close(), 500);
+        } catch {}
         window.close();
-        // If window.close() was a no-op (direct navigation), continue to app
-        await new Promise((r) => setTimeout(r, 300));
-        if (document.hidden) return; // closed successfully
+        await new Promise((r) => setTimeout(r, 400));
+        if (document.hidden) return;
       } else {
         document.body.innerHTML = `<p class="loading error">Auth failed: ${esc(tokens.message || JSON.stringify(tokens))}</p>`;
         return;
