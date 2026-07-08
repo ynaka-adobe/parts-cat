@@ -72,7 +72,7 @@ async function main(params) {
         domain, token);
     } else if (resource === 'documents' && projectId) {
       data = await wfRequest('GET',
-        `/DOCU/search?projectID=${projectId}&fields=ID,name,docObjCode,currentVersionID,description,owner:name,lastModDate,approvalProcesses&$$LIMIT=${limit}`,
+        `/DOCU/search?projectID=${projectId}&fields=ID,name,docObjCode,currentVersionID,description,owner:name,lastModDate&$$LIMIT=${limit}`,
         domain, token);
     } else if (resource === 'approval' && docVersionId) {
       data = await wfRequest('GET',
