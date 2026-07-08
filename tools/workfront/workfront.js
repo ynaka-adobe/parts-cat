@@ -496,8 +496,13 @@ document.head.append(style);
           setTimeout(() => bc.close(), 500);
         } catch {}
         window.close();
+        // window.close() is blocked after cross-origin navigation — show close prompt
         await new Promise((r) => setTimeout(r, 400));
-        if (document.hidden) return;
+        document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;flex-direction:column;gap:12px">
+          <p style="font-size:16px;color:#2d9d78;margin:0">✓ Connected to Workfront</p>
+          <p style="font-size:13px;color:#666;margin:0">You can close this tab and return to DA.</p>
+        </div>`;
+        return;
       } else {
         document.body.innerHTML = `<p class="loading error">Auth failed: ${esc(tokens.message || JSON.stringify(tokens))}</p>`;
         return;
