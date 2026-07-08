@@ -20,6 +20,11 @@ async function runtimeCall(params) {
   return resp.json();
 }
 
+function buildAuthUrl() {
+  return `https://${WF_DOMAIN}/integrations/oauth2/authorize?`
+    + `client_id=${WF_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+}
+
 async function ensureToken() {
   let token = storedToken();
   if (token) return token;
@@ -32,10 +37,20 @@ async function ensureToken() {
     localStorage.removeItem('wf_refresh_token');
   }
 
-  // Redirect to Workfront auth
-  const authUrl = `https://${WF_DOMAIN}/integrations/oauth2/authorize?`
-    + `client_id=${WF_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-  location.href = authUrl;
+  // Inside DA (iframe): use popup so DA context is preserved
+  if (window !== window.top) {
+    return new Promise((resolve) => {
+      const popup = window.open(buildAuthUrl(), 'wf_auth', 'width=600,height=700,left=200,top=100');
+      const timer = setInterval(() => {
+        const t = storedToken();
+        if (t) { clearInterval(timer); resolve(t); return; }
+        if (!popup || popup.closed) { clearInterval(timer); resolve(null); }
+      }, 500);
+    });
+  }
+
+  // Top-level: redirect directly
+  location.href = buildAuthUrl();
   return null;
 }
 
@@ -430,6 +445,11 @@ document.head.append(style);
       if (tokens.access_token) {
         saveTokens(tokens);
         history.replaceState({}, '', location.pathname);
+        // If we're a popup opened by the DA panel, close and let the parent continue
+        if (window.opener && window.opener !== window) {
+          window.close();
+          return;
+        }
       } else {
         document.body.innerHTML = `<p class="loading error">Auth failed: ${esc(tokens.message || JSON.stringify(tokens))}</p>`;
         return;
