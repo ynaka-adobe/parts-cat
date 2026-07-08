@@ -193,7 +193,11 @@ function buildCampaignCard(activity, wfProject, onAction) {
     monitorBtn.className = 'btn-monitor';
     monitorBtn.textContent = 'Monitor';
     monitorBtn.addEventListener('click', (e) => { e.stopPropagation(); onAction('monitor', activity); });
-    actions.append(monitorBtn);
+    const detailBtn = document.createElement('button');
+    detailBtn.className = 'btn-monitor';
+    detailBtn.textContent = 'Details';
+    detailBtn.addEventListener('click', (e) => { e.stopPropagation(); onAction('detail', activity); });
+    actions.append(monitorBtn, detailBtn);
   } else if (isReady) {
     const publishBtn = document.createElement('button');
     publishBtn.className = 'btn-publish';
@@ -276,7 +280,7 @@ function buildCampaignCard(activity, wfProject, onAction) {
 
   card.append(main, side, statsRow);
 
-  card.addEventListener('click', () => onAction('detail', activity, wfProject));
+  card.addEventListener('click', () => onAction('insert', activity, wfProject));
 
   return card;
 }
@@ -299,6 +303,7 @@ function showKebabMenu(activity, anchorEl, onAction) {
 
   const isLive = activity.state === 'live';
   const items = [
+    { label: 'View details', action: 'detail' },
     { label: 'View in Target', action: 'monitor' },
     isLive
       ? { label: 'Pause campaign', action: 'pause' }
@@ -429,46 +434,87 @@ function buildDetailPanel() {
 
 // ── New Campaign modal ─────────────────────────────────────────────────────────
 
+// ── Campaign info parser ───────────────────────────────────────────────────────
+// Extracts { campaignType, variant, mbox } from any activity object.
+
+function parseCampaignInfo(activity) {
+  if (activity.campaignType && activity.variant) {
+    return {
+      campaignType: activity.campaignType,
+      variant: activity.variant,
+      mbox: activity.mbox || `${activity.campaignType}-${activity.variant}`,
+    };
+  }
+  const mboxName = activity.mbox || '';
+  for (const type of ['banner', 'landing', 'specials']) {
+    if (mboxName.startsWith(`${type}-`)) {
+      return { campaignType: type, variant: mboxName.slice(type.length + 1), mbox: mboxName };
+    }
+  }
+  return { campaignType: 'banner', variant: 'leader-board', mbox: 'banner-leader-board' };
+}
+
 // ── Block HTML builder ─────────────────────────────────────────────────────────
 // Produces the DA table markup that EDS decorates into the named block.
+// The mbox is embedded as a metadata row so banner.js can set data-mbox.
 
-function buildBlockHTML(campaignType, variant, campaignName) {
+function buildBlockHTML(campaignType, variant, campaignName, mbox) {
   const row = (cells) => `<tr>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`;
-  const table = (header, ...rows) =>
-    `<table><thead><tr><th colspan="${Math.max(...rows.map((r) => r.length), 1)}">${header}</th></tr></thead>`
-    + `<tbody>${rows.map(row).join('')}</tbody></table>`;
+  const table = (header, contentRows) => {
+    const cols = Math.max(...contentRows.map((r) => r.length), 1);
+    const mboxRow = `<tr><td>Mbox</td><td>${esc(mbox)}</td></tr>`;
+    return `<table>`
+      + `<thead><tr><th colspan="${cols}">${header}</th></tr></thead>`
+      + `<tbody>${contentRows.map(row).join('')}${mboxRow}</tbody>`
+      + `</table>`;
+  };
 
   if (campaignType === 'banner') {
-    const blockName = `Banner (${variant})`;
-    return table(blockName,
-      ['<p>[Add banner image]</p>', `<p>${esc(campaignName)}</p><p>[Add description]</p><p><a href="#">Learn More</a></p>`]);
+    return table(`Banner (${variant})`, [
+      ['<p>[Add banner image]</p>', `<p>${esc(campaignName)}</p><p>[Add description]</p><p><a href="#">Learn More</a></p>`],
+    ]);
   }
 
   if (campaignType === 'landing') {
     if (variant === 'split') {
-      return table('Columns',
-        ['<p>[Add image]</p>', `<h2>${esc(campaignName)}</h2><p>[Add description]</p><p><a href="#">Shop Now</a></p>`]);
+      return table('Columns', [
+        ['<p>[Add image]</p>', `<h2>${esc(campaignName)}</h2><p>[Add description]</p><p><a href="#">Shop Now</a></p>`],
+      ]);
     }
     if (variant === 'cards') {
       return `<h2>${esc(campaignName)}</h2>`
-        + table('Cards',
+        + table('Cards', [
           ['<p>[Add image]</p><p>[Card 1 title]</p><p>[Description]</p>',
            '<p>[Add image]</p><p>[Card 2 title]</p><p>[Description]</p>',
-           '<p>[Add image]</p><p>[Card 3 title]</p><p>[Description]</p>']);
+           '<p>[Add image]</p><p>[Card 3 title]</p><p>[Description]</p>'],
+        ]);
     }
-    // hero (default)
-    return table('Hero', ['<p>[Add hero image]</p>'])
+    // hero
+    return table('Hero', [['<p>[Add hero image]</p>']])
       + `<h2>${esc(campaignName)}</h2><p>[Add campaign description]</p><p><a href="#">Shop Now</a></p>`;
   }
 
   if (campaignType === 'specials') {
-    const bannerVariant = variant === 'flash-sale' ? 'leader-board'
-      : variant === 'seasonal' ? 'large-rectangle' : 'medium-rectangle';
-    return table(`Banner (${bannerVariant})`,
-      ['<p>[Add image]</p>', `<h3>${esc(campaignName)}</h3><p>[Add offer details]</p><p><a href="#">Shop Now</a></p>`]);
+    const bv = variant === 'flash-sale' ? 'leader-board' : variant === 'seasonal' ? 'large-rectangle' : 'medium-rectangle';
+    return table(`Banner (${bv})`, [
+      ['<p>[Add image]</p>', `<h3>${esc(campaignName)}</h3><p>[Add offer details]</p><p><a href="#">Shop Now</a></p>`],
+    ]);
   }
 
   return `<p>${esc(campaignName)}</p>`;
+}
+
+// ── Insert campaign block into DA editor ───────────────────────────────────────
+
+async function insertCampaignBlock(activity, sdk) {
+  const { campaignType, variant, mbox } = parseCampaignInfo(activity);
+  const blockHTML = buildBlockHTML(campaignType, variant, activity.name, mbox);
+  if (sdk?.actions?.sendHTML) {
+    sdk.actions.sendHTML(blockHTML);
+    showToast(`✓ "${activity.name}" inserted — mbox: ${mbox}`);
+  } else {
+    showToast('DA editor not connected — open this tool inside DA.', 'error');
+  }
 }
 
 // ── Toast notification ─────────────────────────────────────────────────────────
@@ -981,7 +1027,9 @@ async function buildApp(activities, wfProjects, sdk) {
   const detailPanel = buildDetailPanel();
 
   function handleAction(action, activity, extra) {
-    if (action === 'detail') {
+    if (action === 'insert') {
+      insertCampaignBlock(activity, sdk);
+    } else if (action === 'detail') {
       const wfProj = extra || wfProjects?.find((p) => p._linkedCampaignId === String(activity.id)) || null;
       detailPanel.show(activity, wfProj);
     } else if (action === 'monitor') {
@@ -994,7 +1042,10 @@ async function buildApp(activities, wfProjects, sdk) {
   }
 
   async function handleKebabAction(action, activity) {
-    if (action === 'monitor') {
+    if (action === 'detail') {
+      const wfProj = wfProjects?.find((p) => p._linkedCampaignId === String(activity.id)) || null;
+      detailPanel.show(activity, wfProj);
+    } else if (action === 'monitor') {
       window.open(`https://experience.adobe.com/#/@adoberm/target/activities`, '_blank', 'noopener');
     } else if (action === 'activate') {
       try {
@@ -1153,21 +1204,27 @@ async function handleWfCallback(code) {
 
 const SAMPLE_ACTIVITIES = [
   { id: 1001, name: 'Caterpillar Connect', state: 'live', type: 'xt', modifiedAt: '2026-06-15T00:00:00Z',
+    campaignType: 'banner', variant: 'leader-board', mbox: 'banner-leader-board',
     description: 'A promotional campaign offering exclusive online discounts for purchasing Caterpillar machinery and equipment parts. Focused on helping businesses optimize their fleets with reliable, high-quality Caterpillar products through an easy online shopping experience.',
     metrics: [{ metricType: 'display', count: 15 }, { metricType: 'click', count: 10 }, { isConversionMetric: true, count: 6 }] },
   { id: 1002, name: 'Machine Maintenance Made Easy', state: 'live', type: 'xt', modifiedAt: '2026-06-20T00:00:00Z',
+    campaignType: 'banner', variant: 'large-rectangle', mbox: 'banner-large-rectangle',
     description: 'An educational and eCommerce-based campaign focusing on preventive machine maintenance. Customers can access Caterpillar tools, guides, and parts for maintaining their machinery, with easy online ordering for all their needs.',
     metrics: [{ metricType: 'display', count: 23 }, { metricType: 'click', count: 18 }, { isConversionMetric: true, count: 7 }] },
   { id: 1003, name: 'Power Up Your Fleet', state: 'inactive', type: 'ab', modifiedAt: '2026-07-01T00:00:00Z',
+    campaignType: 'banner', variant: 'medium-rectangle', mbox: 'banner-medium-rectangle',
     description: 'A promotional campaign offering exclusive online discounts for purchasing Caterpillar machinery and equipment parts. Focused on optimizing fleet performance with genuine CAT parts and accessories.',
     metrics: [] },
   { id: 1004, name: 'Parts Finder Pro', state: 'live', type: 'xt', modifiedAt: '2026-06-10T00:00:00Z',
+    campaignType: 'landing', variant: 'hero', mbox: 'landing-hero',
     description: 'Personalized parts discovery experience helping customers find the right parts for their specific equipment models with AI-powered recommendations.',
     metrics: [{ metricType: 'display', count: 41 }, { metricType: 'click', count: 29 }, { isConversionMetric: true, count: 14 }] },
   { id: 1005, name: 'Dealer Locator Campaign', state: 'inactive', type: 'xt', modifiedAt: '2026-07-05T00:00:00Z',
+    campaignType: 'landing', variant: 'split', mbox: 'landing-split',
     description: 'Drive customers to their nearest authorized CAT dealer with personalized location-based messaging and exclusive dealer-specific offers.',
     metrics: [] },
   { id: 1006, name: 'Winter Equipment Check', state: 'archived', type: 'ab', modifiedAt: '2025-12-01T00:00:00Z',
+    campaignType: 'specials', variant: 'seasonal', mbox: 'specials-seasonal',
     description: 'Seasonal campaign promoting winter maintenance packages and cold-weather equipment accessories.',
     metrics: [{ metricType: 'display', count: 87 }, { metricType: 'click', count: 54 }, { isConversionMetric: true, count: 22 }] },
 ];

@@ -1,29 +1,33 @@
 import { createOptimizedPicture } from '../../scripts/aem.js';
 
 export default function decorate(block) {
-  // Rows: row 0 = image, row 1 = description + CTA
-  // Authors may also put image and text in separate cells of one row.
-  // Normalize into: .banner-image, .banner-body (description + CTA).
-
-  const cells = [...block.querySelectorAll(':scope > div > div')];
+  const rows = [...block.querySelectorAll(':scope > div')];
 
   let imageCell = null;
   let bodyCell = null;
+  let mbox = null;
 
-  cells.forEach((cell) => {
-    if (!imageCell && cell.querySelector('picture, img')) {
-      imageCell = cell;
-    } else if (!bodyCell) {
-      bodyCell = cell;
+  rows.forEach((row) => {
+    const cells = [...row.children];
+    // Mbox metadata row: first cell text is "mbox" (case-insensitive)
+    if (cells.length === 2 && cells[0].textContent.trim().toLowerCase() === 'mbox') {
+      mbox = cells[1].textContent.trim();
+      row.remove();
+      return;
     }
+    cells.forEach((cell) => {
+      if (!imageCell && cell.querySelector('picture, img')) imageCell = cell;
+      else if (!bodyCell) bodyCell = cell;
+    });
   });
 
-  // Rebuild block DOM
+  // Expose mbox as a data attribute so at.js can target this element
+  if (mbox) block.dataset.mbox = mbox;
+
   block.innerHTML = '';
 
   if (imageCell) {
     imageCell.className = 'banner-image';
-    // Replace with optimized picture
     imageCell.querySelectorAll('picture > img').forEach((img) => {
       const widths = block.classList.contains('medium-rectangle')
         ? [{ width: '300' }]
@@ -35,7 +39,6 @@ export default function decorate(block) {
 
   if (bodyCell) {
     bodyCell.className = 'banner-body';
-    // Style the CTA link as a button
     bodyCell.querySelectorAll('a').forEach((a) => a.classList.add('button'));
     block.append(bodyCell);
   }

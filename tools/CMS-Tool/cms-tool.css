@@ -331,7 +331,14 @@ body {
   transition: box-shadow .15s;
 }
 
+.campaign-card { cursor: pointer; }
 .campaign-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+.campaign-card:hover .campaign-name::after {
+  content: ' ↗';
+  font-size: 13px;
+  color: #ffcb00;
+  font-weight: 400;
+}
 
 .campaign-main { grid-column: 1; grid-row: 1; }
 .campaign-side { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 12px; min-width: 280px; }
