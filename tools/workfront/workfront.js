@@ -220,8 +220,8 @@ async function buildApp() {
   const tabBar = document.createElement('div');
   tabBar.className = 'tab-bar';
   tabBar.innerHTML = `
-    <button class="tab-btn active" data-tab="documents">Documents</button>
-    <button class="tab-btn" data-tab="tasks">Tasks</button>`;
+    <button class="tab-btn active" data-tab="tasks">Tasks</button>
+    <button class="tab-btn" data-tab="documents">Documents</button>`;
 
   const searchWrap = document.createElement('div');
   searchWrap.className = 'search-wrap';
@@ -251,7 +251,7 @@ async function buildApp() {
   let currentProjectId = null;
   let currentProject = null;
   let activeFilter = 'member';
-  let activeTab = 'documents';
+  let activeTab = 'tasks';
 
   searchInput.addEventListener('input', () => {
     if (activeTab === 'documents') renderDocs(allDocs, searchInput.value);
@@ -265,13 +265,14 @@ async function buildApp() {
       tabBar.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === activeTab));
       searchInput.value = '';
       if (!currentProject) return;
-      if (activeTab === 'documents') {
-        toolbarCount.textContent = `(${allDocs.length})`;
-        renderDocs(allDocs, '');
-      } else {
+      if (activeTab === 'tasks') {
         toolbarCount.textContent = `(${allTasks.length})`;
         renderTasks(allTasks, '');
-        if (!allTasks.length) loadTasks(currentProject);
+        if (!allTasks.length && currentProject) loadTasks(currentProject);
+      } else {
+        toolbarCount.textContent = `(${allDocs.length})`;
+        renderDocs(allDocs, '');
+        if (!allDocs.length && currentProject) loadDocuments(currentProject);
       }
     });
   });
