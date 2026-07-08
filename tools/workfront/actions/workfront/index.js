@@ -93,6 +93,15 @@ async function main(params) {
       data = await wfRequest('GET',
         `/OPTASK/search?projectID=${projectId}&fields=ID,name,status,priority,assignedTo:name,plannedCompletionDate,enteredBy:name,entryDate&$$FIRST=0&$$LIMIT=${limit}`,
         domain, token);
+    } else if (resource === 'create_issue') {
+      if (!params.name) return { statusCode: 400, body: JSON.stringify({ error: 'Issue name is required' }) };
+      if (!projectId) return { statusCode: 400, body: JSON.stringify({ error: 'projectId is required' }) };
+      const issueBody = { name: params.name, projectID: projectId };
+      if (params.description) issueBody.description = params.description;
+      if (params.plannedCompletionDate) issueBody.plannedCompletionDate = params.plannedCompletionDate;
+      if (params.priority != null) issueBody.priority = Number(params.priority);
+      if (params.assignedToID) issueBody.assignedToID = params.assignedToID;
+      data = await wfRequest('POST', `/OPTASK?fields=ID,name,status,priority`, domain, token, issueBody);
     } else if (resource === 'search_users') {
       const q = params.query || '';
       if (!q) return { statusCode: 400, body: JSON.stringify({ error: 'query required' }) };

@@ -245,7 +245,16 @@ async function buildApp() {
   </svg> New Task`;
   newTaskBtn.style.display = 'none';
 
-  toolbar.append(toolbarTitle, toolbarCount, tabBar, searchWrap, newTaskBtn);
+  const newIssueBtn = document.createElement('button');
+  newIssueBtn.className = 'btn-new-task';
+  newIssueBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+    <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+  </svg> New Issue`;
+  newIssueBtn.style.cssText = 'display:none;background:#e68619';
+  newIssueBtn.addEventListener('mouseenter', () => { newIssueBtn.style.background = '#cb6f15'; });
+  newIssueBtn.addEventListener('mouseleave', () => { newIssueBtn.style.background = '#e68619'; });
+
+  toolbar.append(toolbarTitle, toolbarCount, tabBar, searchWrap, newTaskBtn, newIssueBtn);
   const recordsArea = document.createElement('div');
   recordsArea.className = 'records-area';
   recordsArea.append(emptyState('Select a project from the sidebar.'));
@@ -391,6 +400,187 @@ async function buildApp() {
     });
   }
 
+  newIssueBtn.addEventListener('click', () => openNewIssueModal());
+
+  async function openNewIssueModal() {
+    if (!currentProject) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-header">
+        <div class="modal-icon" style="background:#e68619">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <span class="modal-title">New Issue</span>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="modal-label">Issue Name <span style="color:#d7373f">*</span></label>
+          <input class="modal-input" id="ni-name" placeholder="Issue Name" autocomplete="off">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Description</label>
+          <textarea class="modal-textarea" id="ni-desc" placeholder="Description" maxlength="4000"></textarea>
+          <div class="modal-charcount"><span id="ni-desc-count">0</span>/4000</div>
+        </div>
+        <div class="modal-field modal-row">
+          <div style="flex:1">
+            <label class="modal-label">Priority</label>
+            <select class="modal-input" id="ni-priority" style="width:100%">
+              <option value="3">Normal</option>
+              <option value="1">Urgent</option>
+              <option value="2">High</option>
+              <option value="4">Low</option>
+              <option value="0">None</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <label class="modal-label">Planned Completion Date</label>
+            <input class="modal-input" id="ni-date" type="date">
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Assignments</label>
+          <div class="modal-assign-row">
+            <div id="ni-assignee-chip" class="modal-assignee-chip" style="display:none"></div>
+            <button class="modal-assign-me" id="ni-assign-me">Assign to me</button>
+          </div>
+          <input class="modal-input" id="ni-user-search" placeholder="Search people…" style="margin-top:6px;display:none">
+          <div id="ni-user-results" class="user-results"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-primary" id="ni-submit">Create issue</button>
+        <button class="modal-btn-cancel" id="ni-cancel">Cancel</button>
+      </div>`;
+
+    overlay.append(modal);
+    document.body.append(overlay);
+
+    const nameInput = modal.querySelector('#ni-name');
+    const descInput = modal.querySelector('#ni-desc');
+    const descCount = modal.querySelector('#ni-desc-count');
+    const assignMeBtn = modal.querySelector('#ni-assign-me');
+    const assigneeChip = modal.querySelector('#ni-assignee-chip');
+    const userSearchInput = modal.querySelector('#ni-user-search');
+    const userResults = modal.querySelector('#ni-user-results');
+    const submitBtn = modal.querySelector('#ni-submit');
+    const cancelBtn = modal.querySelector('#ni-cancel');
+
+    nameInput.focus();
+    descInput.addEventListener('input', () => { descCount.textContent = descInput.value.length; });
+
+    let assignedToID = null;
+
+    assignMeBtn.addEventListener('click', async () => {
+      assignMeBtn.textContent = 'Loading…';
+      assignMeBtn.disabled = true;
+      try {
+        if (!cachedCurrentUser) {
+          const result = await api({ resource: 'current_user' });
+          cachedCurrentUser = Array.isArray(result) ? result[0] : result;
+        }
+        if (cachedCurrentUser?.ID) {
+          assignedToID = cachedCurrentUser.ID;
+          assigneeChip.textContent = cachedCurrentUser.name || cachedCurrentUser.emailAddr || 'Me';
+          assigneeChip.style.display = '';
+          assignMeBtn.style.display = 'none';
+          userSearchInput.style.display = 'none';
+        }
+      } catch {
+        assignMeBtn.textContent = 'Assign to me';
+        assignMeBtn.disabled = false;
+      }
+    });
+
+    // Show search input after clicking the chip area (if not already assigned)
+    assigneeChip.addEventListener('click', () => {
+      assignedToID = null;
+      assigneeChip.style.display = 'none';
+      assignMeBtn.style.display = '';
+      assignMeBtn.disabled = false;
+      assignMeBtn.textContent = 'Assign to me';
+      userSearchInput.style.display = '';
+      userSearchInput.focus();
+    });
+
+    userSearchInput.style.display = '';
+    let searchTimer;
+    userSearchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const q = userSearchInput.value.trim();
+      userResults.innerHTML = '';
+      if (!q) return;
+      searchTimer = setTimeout(async () => {
+        userResults.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:#888">Searching…</div>';
+        try {
+          const users = await api({ resource: 'search_users', query: q });
+          userResults.innerHTML = '';
+          (Array.isArray(users) ? users : []).forEach((u) => {
+            const item = document.createElement('div');
+            item.className = 'user-result-item';
+            item.innerHTML = `<strong style="font-size:13px">${esc(u.name)}</strong> <span style="font-size:11px;color:#888">${esc(u.emailAddr || '')}</span>`;
+            item.addEventListener('click', () => {
+              assignedToID = u.ID;
+              assigneeChip.textContent = u.name;
+              assigneeChip.style.display = '';
+              assignMeBtn.style.display = 'none';
+              userSearchInput.value = '';
+              userSearchInput.style.display = 'none';
+              userResults.innerHTML = '';
+            });
+            userResults.append(item);
+          });
+          if (!userResults.children.length) userResults.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:#888">No results</div>';
+        } catch {
+          userResults.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:#c00">Search failed</div>';
+        }
+      }, 300);
+    });
+
+    const close = () => overlay.remove();
+    cancelBtn.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function onKey(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+    });
+
+    submitBtn.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      if (!name) { nameInput.classList.add('modal-input--error'); nameInput.focus(); return; }
+      nameInput.classList.remove('modal-input--error');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating…';
+
+      const p = { resource: 'create_issue', name, projectId: currentProject.ID };
+      if (descInput.value.trim()) p.description = descInput.value.trim();
+      const priority = modal.querySelector('#ni-priority').value;
+      if (priority !== '') p.priority = priority;
+      const date = modal.querySelector('#ni-date').value;
+      if (date) p.plannedCompletionDate = date;
+      if (assignedToID) p.assignedToID = assignedToID;
+
+      try {
+        await api(p);
+        close();
+        await loadIssues(currentProject);
+      } catch (e) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create issue';
+        const err = modal.querySelector('.modal-error') || document.createElement('p');
+        err.className = 'modal-error';
+        err.textContent = e.message;
+        modal.querySelector('.modal-footer').prepend(err);
+      }
+    });
+  }
+
   // ── State
   let allDocs = [];
   let allTasks = [];
@@ -415,16 +605,19 @@ async function buildApp() {
       if (!currentProject) return;
       if (activeTab === 'tasks') {
         newTaskBtn.style.display = '';
+        newIssueBtn.style.display = 'none';
         toolbarCount.textContent = `(${allTasks.length})`;
         renderTasks(allTasks, '');
         if (!allTasks.length && currentProject) loadTasks(currentProject);
       } else if (activeTab === 'issues') {
         newTaskBtn.style.display = 'none';
+        newIssueBtn.style.display = '';
         toolbarCount.textContent = `(${allIssues.length})`;
         renderIssues(allIssues, '');
         if (!allIssues.length && currentProject) loadIssues(currentProject);
       } else {
         newTaskBtn.style.display = 'none';
+        newIssueBtn.style.display = 'none';
         toolbarCount.textContent = `(${allDocs.length})`;
         renderDocs(allDocs, '');
         if (!allDocs.length && currentProject) loadDocuments(currentProject);
@@ -494,6 +687,7 @@ async function buildApp() {
     detailPanel.classList.remove('open');
 
     newTaskBtn.style.display = activeTab === 'tasks' ? '' : 'none';
+    newIssueBtn.style.display = activeTab === 'issues' ? '' : 'none';
 
     document.querySelectorAll('.rt-item').forEach((el) =>
       el.classList.toggle('active', el.id === `proj-${p.ID}`));
