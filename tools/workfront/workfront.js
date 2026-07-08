@@ -267,7 +267,7 @@ async function buildApp() {
   const detailPanel = buildDetailPanel();
 
   // ── Issue edit panel
-  const issuePanel = buildIssuePanel();
+  const issuePanel = buildIssuePanel(api);
 
   // ── New Task modal
   let cachedCurrentUser = null;
@@ -1029,15 +1029,19 @@ function buildDetailPanel() {
 
 // ── Issue edit panel ──────────────────────────────────────────────────────────
 
-function buildIssuePanel() {
-  const ISSUE_STATUS_OPTIONS = [
+function buildIssuePanel(apiFn) {
+  // Colors for well-known equatesWith system statuses
+  const STATUS_COLORS = {
+    NEW: '#1473e6', INP: '#e68619', CPL: '#2d9d78',
+    RES: '#2d9d78', CLO: '#888', ONH: '#888',
+  };
+  const FALLBACK_STATUS_OPTIONS = [
     { value: 'NEW', label: 'New',         color: '#1473e6' },
     { value: 'INP', label: 'In Progress', color: '#e68619' },
     { value: 'ONH', label: 'On Hold',     color: '#888' },
     { value: 'CPL', label: 'Complete',    color: '#2d9d78' },
-    { value: 'RES', label: 'Resolved',    color: '#2d9d78' },
-    { value: 'CLO', label: 'Closed',      color: '#888' },
   ];
+  let cachedStatusOptions = null;
 
   const panel = document.createElement('div');
   panel.className = 'detail-panel';
@@ -1060,14 +1064,33 @@ function buildIssuePanel() {
   document.body.append(panel);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') panel.classList.remove('open'); });
 
-  panel.show = (issue, onSaved) => {
+  panel.show = async (issue, onSaved) => {
     nameEl.textContent = issue.name || '(Untitled)';
+    panel.classList.add('open');
+    body.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
 
-    let selectedStatus = issue.status || 'NEW';
+    // Fetch real statuses on first open
+    if (!cachedStatusOptions) {
+      try {
+        const raw = await apiFn({ resource: 'issue_statuses' });
+        const list = Array.isArray(raw) ? raw : [];
+        if (list.length) {
+          cachedStatusOptions = list.map((s) => ({
+            value: s.key,
+            label: s.label,
+            color: STATUS_COLORS[s.equatesWith] || STATUS_COLORS[s.key] || '#888',
+          }));
+        }
+      } catch { /* fall through to fallback */ }
+      if (!cachedStatusOptions) cachedStatusOptions = FALLBACK_STATUS_OPTIONS;
+    }
+
+    const statusOptions = cachedStatusOptions;
+    body.innerHTML = '';
+
+    let selectedStatus = issue.status || statusOptions[0]?.value || 'NEW';
     let selectedUserId = issue.assignedTo?.ID || null;
     let selectedUserName = issue.assignedTo?.name || null;
-
-    body.innerHTML = '';
 
     // ── Status field
     const statusLabel = document.createElement('div');
@@ -1077,7 +1100,7 @@ function buildIssuePanel() {
 
     const statusBtns = document.createElement('div');
     statusBtns.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px';
-    ISSUE_STATUS_OPTIONS.forEach(({ value, label, color }) => {
+    statusOptions.forEach(({ value, label, color }) => {
       const btn = document.createElement('button');
       btn.className = 'issue-status-btn';
       btn.dataset.value = value;
@@ -1086,7 +1109,7 @@ function buildIssuePanel() {
       btn.addEventListener('click', () => {
         selectedStatus = value;
         statusBtns.querySelectorAll('.issue-status-btn').forEach((b) => {
-          const opt = ISSUE_STATUS_OPTIONS.find((o) => o.value === b.dataset.value);
+          const opt = statusOptions.find((o) => o.value === b.dataset.value);
           const active = b.dataset.value === selectedStatus;
           b.style.background = active ? opt.color : opt.color + '11';
           b.style.color = active ? '#fff' : opt.color;
@@ -1139,7 +1162,7 @@ function buildIssuePanel() {
       searchTimer = setTimeout(async () => {
         userResults.innerHTML = '<div style="padding:6px 10px;font-size:12px;color:#888">Searching…</div>';
         try {
-          const users = await api({ resource: 'search_users', query: q });
+          const users = await apiFn({ resource: 'search_users', query: q });
           userResults.innerHTML = '';
           const list = Array.isArray(users) ? users : [];
           if (!list.length) {
@@ -1191,7 +1214,7 @@ function buildIssuePanel() {
         const updateParams = { resource: 'update_issue', issueId: issue.ID };
         if (selectedStatus !== issue.status) updateParams.status = selectedStatus;
         if (selectedUserId && selectedUserId !== issue.assignedTo?.ID) updateParams.assignedToID = selectedUserId;
-        await api(updateParams);
+        await apiFn(updateParams);
         panel.classList.remove('open');
         if (onSaved) onSaved();
       } catch (e) {
@@ -1203,7 +1226,6 @@ function buildIssuePanel() {
     });
 
     body.append(statusLabel, statusBtns, assignLabel, currentAssignee, userSearchInput, userResults, errorEl, footer);
-    panel.classList.add('open');
   };
 
   return panel;
