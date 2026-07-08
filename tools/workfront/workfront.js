@@ -46,9 +46,9 @@ async function api(params) {
   if (!token) return null;
   const url = `${RUNTIME_URL}?${new URLSearchParams({ ...params, wf_token: token })}`;
   const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`Runtime error ${resp.status}`);
   const json = await resp.json();
   if (json.error) throw new Error(json.error);
+  if (!resp.ok) throw new Error(`Runtime error ${resp.status}`);
   return json.data ?? json;
 }
 

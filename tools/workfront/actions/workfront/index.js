@@ -10,12 +10,11 @@ async function tokenRequest(domain, body) {
 }
 
 function wfRequest(method, path, domain, token, body) {
-  const opts = {
-    method,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-  };
+  const sep = path.includes('?') ? '&' : '?';
+  const url = `https://${domain}/attask/api/v18.0${path}${sep}sessionID=${encodeURIComponent(token)}`;
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
-  return fetch(`https://${domain}/attask/api/v18.0${path}`, opts).then((r) => r.json());
+  return fetch(url, opts).then((r) => r.json());
 }
 
 async function main(params) {
@@ -85,6 +84,13 @@ async function main(params) {
         domain, token);
     } else {
       return { statusCode: 400, body: JSON.stringify({ error: `Unknown resource "${resource}"` }) };
+    }
+
+    // Surface Workfront-level errors clearly
+    if (data && data.error) {
+      const msg = typeof data.error === 'string' ? data.error
+        : data.error.message || JSON.stringify(data.error);
+      return { statusCode: 400, body: JSON.stringify({ error: msg, raw: data.error }) };
     }
 
     return { statusCode: 200, body: JSON.stringify(data) };
