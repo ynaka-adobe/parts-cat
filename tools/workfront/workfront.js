@@ -490,9 +490,7 @@ async function buildApp() {
     searchInput.value = '';
     detailPanel.classList.remove('open');
 
-    activeTab = 'tasks';
-    newTaskBtn.style.display = '';
-    tabBar.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'tasks'));
+    newTaskBtn.style.display = activeTab === 'tasks' ? '' : 'none';
 
     document.querySelectorAll('.rt-item').forEach((el) =>
       el.classList.toggle('active', el.id === `proj-${p.ID}`));
@@ -501,7 +499,9 @@ async function buildApp() {
     toolbarCount.textContent = '';
     recordsArea.innerHTML = '';
 
-    await loadTasks(p);
+    if (activeTab === 'issues') await loadIssues(p);
+    else if (activeTab === 'documents') await loadDocuments(p);
+    else await loadTasks(p);
   }
 
   async function loadDocuments(p) {
