@@ -1,0 +1,450 @@
+import DA_SDK from 'https://da.live/nx/utils/sdk.js';
+
+const RUNTIME_URL = 'https://3635370-144scarletlobster.adobeioruntime.net/api/v1/web/default/workfront-planning';
+const WF_DOMAIN = 'aemshowcase2.my.workfront.com';
+const WF_CLIENT_ID = '56e219a0a1eeae8feb55c444e3d8a8b6';
+const REDIRECT_URI = 'https://main--parts-cat--ynaka-adobe.aem.live/tools/workfront/workfront.html';
+
+// ── OAuth helpers ─────────────────────────────────────────────────────────────
+
+function storedToken() { return localStorage.getItem('wf_access_token'); }
+function storedRefresh() { return localStorage.getItem('wf_refresh_token'); }
+function saveTokens({ access_token, refresh_token }) {
+  if (access_token) localStorage.setItem('wf_access_token', access_token);
+  if (refresh_token) localStorage.setItem('wf_refresh_token', refresh_token);
+}
+
+async function runtimeCall(params) {
+  const resp = await fetch(`${RUNTIME_URL}?${new URLSearchParams(params)}`);
+  if (!resp.ok) throw new Error(`Runtime ${resp.status}`);
+  return resp.json();
+}
+
+async function ensureToken() {
+  let token = storedToken();
+  if (token) return token;
+
+  const refresh = storedRefresh();
+  if (refresh) {
+    const json = await runtimeCall({ resource: 'refresh_token', refresh_token: refresh }).catch(() => ({}));
+    if (json.access_token) { saveTokens(json); return json.access_token; }
+    localStorage.removeItem('wf_access_token');
+    localStorage.removeItem('wf_refresh_token');
+  }
+
+  // Redirect to Workfront auth
+  const authUrl = `https://${WF_DOMAIN}/integrations/oauth2/authorize?`
+    + `client_id=${WF_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+  location.href = authUrl;
+  return null;
+}
+
+// ── Runtime fetch ─────────────────────────────────────────────────────────────
+
+async function api(params) {
+  const token = await ensureToken();
+  if (!token) return null;
+  const url = `${RUNTIME_URL}?${new URLSearchParams({ ...params, wf_token: token })}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Runtime error ${resp.status}`);
+  const json = await resp.json();
+  if (json.error) throw new Error(json.error);
+  return json.data ?? json;
+}
+
+// ── Status helpers ────────────────────────────────────────────────────────────
+
+const PROJECT_STATUS = {
+  CUR: { label: 'Current',   color: '#2d9d78' },
+  PLN: { label: 'Planning',  color: '#1473e6' },
+  CPL: { label: 'Complete',  color: '#888' },
+  DED: { label: 'Dead',      color: '#c00' },
+  ONH: { label: 'On Hold',   color: '#e68619' },
+};
+
+const APPROVAL_STATUS = {
+  AA:  { label: 'Approved',  color: '#2d9d78' },
+  RJ:  { label: 'Rejected',  color: '#d7373f' },
+  AD:  { label: 'Pending',   color: '#e68619' },
+  AU:  { label: 'Recalled',  color: '#888' },
+};
+
+function badge(text, color) {
+  const el = document.createElement('span');
+  el.className = 'badge';
+  el.style.cssText = `background:${color}22;color:${color};border:1px solid ${color}44`;
+  el.textContent = text;
+  return el;
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function spinner() {
+  const el = document.createElement('div');
+  el.className = 'spinner-wrap';
+  el.innerHTML = '<div class="spinner"></div>';
+  return el;
+}
+
+function emptyState(msg) {
+  const el = document.createElement('div');
+  el.className = 'empty-state';
+  el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+  </svg><p>${msg}</p>`;
+  return el;
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+
+async function buildApp() {
+  const shell = document.createElement('div');
+  shell.className = 'app-shell';
+
+  // ── Top bar
+  const topbar = document.createElement('div');
+  topbar.className = 'topbar';
+  topbar.innerHTML = `
+    <span class="topbar-title">Workfront Library</span>
+    <div class="topbar-sep"></div>
+    <span class="workspace-label">Projects</span>
+    <a class="topbar-expand" href="https://${WF_DOMAIN}" target="_blank" rel="noopener" title="Open Workfront">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+      </svg>
+    </a>`;
+
+  // ── Sidebar (projects)
+  const sidebar = document.createElement('nav');
+  sidebar.className = 'sidebar';
+  const sidebarHeading = document.createElement('div');
+  sidebarHeading.className = 'sidebar-heading';
+  sidebarHeading.textContent = 'Projects';
+  const sidebarList = document.createElement('div');
+  sidebar.append(sidebarHeading, sidebarList);
+
+  // ── Main (documents + approvals)
+  const main = document.createElement('div');
+  main.className = 'main';
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'toolbar';
+  const toolbarTitle = document.createElement('span');
+  toolbarTitle.className = 'toolbar-title';
+  toolbarTitle.textContent = '—';
+  const toolbarCount = document.createElement('span');
+  toolbarCount.className = 'toolbar-count';
+
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'search-wrap';
+  searchWrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+  </svg>`;
+  const searchInput = document.createElement('input');
+  searchInput.className = 'search-input';
+  searchInput.placeholder = 'Search documents…';
+  searchWrap.append(searchInput);
+
+  toolbar.append(toolbarTitle, toolbarCount, searchWrap);
+  const recordsArea = document.createElement('div');
+  recordsArea.className = 'records-area';
+  recordsArea.append(emptyState('Select a project from the sidebar.'));
+  main.append(toolbar, recordsArea);
+
+  shell.append(topbar, sidebar, main);
+  document.body.append(shell);
+
+  // ── Detail panel
+  const detailPanel = buildDetailPanel();
+
+  // ── State
+  let allDocs = [];
+  let currentProjectId = null;
+  let currentProject = null;
+
+  searchInput.addEventListener('input', () => renderDocs(allDocs, searchInput.value));
+
+  // ── Load projects
+  sidebarList.append(spinner());
+  let projects = [];
+  try {
+    projects = await api({ resource: 'projects', limit: 200 });
+    if (!Array.isArray(projects)) projects = [];
+  } catch (e) {
+    sidebarList.innerHTML = `<p class="loading error">${esc(e.message)}</p>`;
+    return;
+  }
+
+  sidebarList.innerHTML = '';
+  if (!projects.length) {
+    sidebarList.append(emptyState('No projects found.'));
+    return;
+  }
+
+  projects.forEach((p) => {
+    const st = PROJECT_STATUS[p.status] || { label: p.status, color: '#888' };
+    const item = document.createElement('div');
+    item.className = 'rt-item';
+    item.id = `proj-${p.ID}`;
+    item.innerHTML = `
+      <div class="rt-icon" style="background:${st.color}">${esc((p.name || '?').charAt(0).toUpperCase())}</div>
+      <div style="overflow:hidden">
+        <div class="rt-name">${esc(p.name)}</div>
+      </div>`;
+    item.addEventListener('click', () => selectProject(p));
+    sidebarList.append(item);
+  });
+
+  if (projects.length) selectProject(projects[0]);
+
+  // ── Select project → load documents
+  async function selectProject(p) {
+    currentProjectId = p.ID;
+    currentProject = p;
+    allDocs = [];
+    searchInput.value = '';
+    detailPanel.classList.remove('open');
+
+    document.querySelectorAll('.rt-item').forEach((el) =>
+      el.classList.toggle('active', el.id === `proj-${p.ID}`));
+
+    toolbarTitle.textContent = p.name;
+    toolbarCount.textContent = '';
+    recordsArea.innerHTML = '';
+    recordsArea.append(spinner());
+
+    try {
+      const docs = await api({ resource: 'documents', projectId: p.ID, limit: 200 });
+      allDocs = Array.isArray(docs) ? docs : [];
+      toolbarCount.textContent = `(${allDocs.length})`;
+      renderDocs(allDocs, '');
+    } catch (e) {
+      recordsArea.innerHTML = `<p class="loading error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  // ── Render documents table
+  function renderDocs(docs, q) {
+    const filtered = q
+      ? docs.filter((d) => (d.name || '').toLowerCase().includes(q.toLowerCase()))
+      : docs;
+
+    recordsArea.innerHTML = '';
+    if (!filtered.length) {
+      recordsArea.append(emptyState(q ? 'No documents match.' : 'No documents in this project.'));
+      return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'records-table-wrap';
+
+    const table = document.createElement('table');
+    table.className = 'records-table';
+    table.innerHTML = `<thead><tr>
+      <th>Name</th>
+      <th>Owner</th>
+      <th>Modified</th>
+      <th>Approval</th>
+      <th></th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    filtered.forEach((doc) => {
+      const tr = document.createElement('tr');
+      const hasApproval = doc.approvalProcesses && doc.approvalProcesses.length > 0;
+      tr.innerHTML = `
+        <td class="name-cell">${esc(doc.name || '(Untitled)')}</td>
+        <td>${esc(doc.owner?.name || '—')}</td>
+        <td>${esc(formatDate(doc.lastModDate))}</td>
+        <td>${hasApproval ? '<span class="badge badge--blue">Has approval</span>' : '<span style="color:#aaa">—</span>'}</td>
+        <td class="action-cell"></td>`;
+
+      if (doc.currentVersionID) {
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'btn-view';
+        viewBtn.textContent = 'Details';
+        viewBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openDetail(doc);
+        });
+        tr.querySelector('.action-cell').append(viewBtn);
+      }
+
+      tr.addEventListener('click', () => openDetail(doc));
+      tbody.append(tr);
+    });
+
+    table.append(tbody);
+    wrap.append(table);
+    recordsArea.append(wrap);
+  }
+
+  // ── Open detail panel for a document
+  async function openDetail(doc) {
+    detailPanel.show(doc, currentProject);
+
+    if (doc.currentVersionID) {
+      detailPanel.setApprovalLoading();
+      try {
+        const reviewers = await api({ resource: 'approval', docVersionId: doc.currentVersionID });
+        detailPanel.setApprovals(Array.isArray(reviewers) ? reviewers : []);
+      } catch (e) {
+        detailPanel.setApprovalError(e.message);
+      }
+    }
+  }
+}
+
+// ── Detail panel ──────────────────────────────────────────────────────────────
+
+function buildDetailPanel() {
+  const panel = document.createElement('div');
+  panel.className = 'detail-panel';
+
+  const header = document.createElement('div');
+  header.className = 'detail-header';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'detail-name';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-close';
+  closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+  </svg>`;
+  closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+  header.append(nameEl, closeBtn);
+
+  const openLink = document.createElement('a');
+  openLink.className = 'detail-open';
+  openLink.target = '_blank';
+  openLink.rel = 'noopener';
+  openLink.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+  </svg> Open in Workfront`;
+
+  const body = document.createElement('div');
+  body.className = 'detail-body';
+
+  panel.append(header, openLink, body);
+  document.body.append(panel);
+
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') panel.classList.remove('open'); });
+
+  panel.show = (doc, project) => {
+    nameEl.textContent = doc.name || '(Untitled)';
+    openLink.href = `https://${WF_DOMAIN}/document/${doc.ID}/details`;
+
+    body.innerHTML = `
+      <div class="detail-field">
+        <div class="detail-field-label">Project</div>
+        <div class="detail-field-value">${esc(project?.name || '—')}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-label">Owner</div>
+        <div class="detail-field-value">${esc(doc.owner?.name || '—')}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-label">Last Modified</div>
+        <div class="detail-field-value">${esc(formatDate(doc.lastModDate))}</div>
+      </div>
+      ${doc.description ? `<div class="detail-field">
+        <div class="detail-field-label">Description</div>
+        <div class="detail-field-value">${esc(doc.description)}</div>
+      </div>` : ''}
+      <div class="detail-section-title">Approvals</div>
+      <div id="approval-list"><div class="spinner-wrap"><div class="spinner"></div></div></div>`;
+
+    panel.classList.add('open');
+  };
+
+  panel.setApprovalLoading = () => {
+    const el = body.querySelector('#approval-list');
+    if (el) el.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
+  };
+
+  panel.setApprovals = (reviewers) => {
+    const el = body.querySelector('#approval-list');
+    if (!el) return;
+    if (!reviewers.length) {
+      el.innerHTML = '<p style="color:#aaa;font-size:13px;padding:4px 0">No approvals on this version.</p>';
+      return;
+    }
+    el.innerHTML = reviewers.map((r) => {
+      const st = APPROVAL_STATUS[r.approverDecision] || APPROVAL_STATUS[r.status] || { label: r.approverDecision || r.status || '—', color: '#888' };
+      return `<div class="approval-row">
+        <div class="approval-reviewer">${esc(r.reviewer?.name || r.reviewer?.emailAddr || '—')}</div>
+        <span class="badge" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${esc(st.label)}</span>
+        ${r.reviewDate ? `<div class="approval-date">${esc(formatDate(r.reviewDate))}</div>` : ''}
+      </div>`;
+    }).join('');
+  };
+
+  panel.setApprovalError = (msg) => {
+    const el = body.querySelector('#approval-list');
+    if (el) el.innerHTML = `<p class="error" style="font-size:13px">${esc(msg)}</p>`;
+  };
+
+  return panel;
+}
+
+// ── Extra CSS injected for approval rows + badges ─────────────────────────────
+
+const style = document.createElement('style');
+style.textContent = `
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .badge--blue { background:#1473e622; color:#1473e6; border:1px solid #1473e644; }
+  .approval-row { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid #f2f2f2; }
+  .approval-row:last-child { border-bottom:none; }
+  .approval-reviewer { flex:1; font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .approval-date { font-size:11px; color:#888; white-space:nowrap; }
+  .detail-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#888; margin:18px 0 8px; }
+  .action-cell { text-align:right; }
+  .btn-view { background:none; border:1px solid #e0e0e0; border-radius:4px; padding:3px 10px; font-size:12px; cursor:pointer; color:#1473e6; font-family:inherit; }
+  .btn-view:hover { background:#f0f4ff; }
+`;
+document.head.append(style);
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+(async function init() {
+  await Promise.race([DA_SDK, new Promise((r) => setTimeout(r, 1500))]);
+
+  // Handle OAuth callback: ?code=...
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  if (code) {
+    document.body.innerHTML = '<p class="loading">Authenticating with Workfront…</p>';
+    try {
+      const tokens = await runtimeCall({ resource: 'exchange_code', code });
+      if (tokens.access_token) {
+        saveTokens(tokens);
+        history.replaceState({}, '', location.pathname);
+      } else {
+        document.body.innerHTML = `<p class="loading error">Auth failed: ${esc(tokens.message || JSON.stringify(tokens))}</p>`;
+        return;
+      }
+    } catch (err) {
+      document.body.innerHTML = `<p class="loading error">Auth error: ${esc(err.message)}</p>`;
+      return;
+    }
+  }
+
+  document.body.innerHTML = '<p class="loading">Loading Workfront projects…</p>';
+
+  try {
+    await buildApp();
+  } catch (err) {
+    document.body.innerHTML = `<p class="loading error">${err.message}</p>`;
+  }
+}());
