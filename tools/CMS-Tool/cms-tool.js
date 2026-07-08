@@ -625,7 +625,7 @@ async function buildApp(activities, wfProjects) {
   </svg> Sort by:`;
   const sortSelect = document.createElement('select');
   sortSelect.className = 'sort-select';
-  sortSelect.innerHTML = `<option value="status">Status</option><option value="name">Name</option><option value="date">Date Modified</option>`;
+  sortSelect.innerHTML = `<option value="date">Date Modified</option><option value="status">Status</option><option value="name">Name</option>`;
   sortWrap.append(sortSelect);
 
   tabSortBar.append(tabList, sortWrap);
@@ -637,7 +637,7 @@ async function buildApp(activities, wfProjects) {
   // State
   let activeTab = 'active';
   let searchQuery = '';
-  let sortKey = 'status';
+  let sortKey = 'date';
 
   // Build detail panel
   const detailPanel = buildDetailPanel();
