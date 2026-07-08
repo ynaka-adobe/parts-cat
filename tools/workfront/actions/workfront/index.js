@@ -67,8 +67,9 @@ async function main(params) {
     let data;
 
     if (resource === 'projects') {
+      const ownerFilter = params.filter === 'owner' ? '&ownerID=$$USER.ID' : '';
       data = await wfRequest('GET',
-        `/PROJ/search?fields=ID,name,status,percentComplete,plannedCompletionDate,owner:name&$$LIMIT=${limit}&$$FIRST=0`,
+        `/PROJ/search?fields=ID,name,status,percentComplete,plannedCompletionDate,owner:name&$$LIMIT=${limit}&$$FIRST=0${ownerFilter}`,
         domain, token);
     } else if (resource === 'documents' && projectId) {
       data = await wfRequest('GET',

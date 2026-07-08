@@ -197,8 +197,13 @@ async function buildApp() {
   const sidebarHeading = document.createElement('div');
   sidebarHeading.className = 'sidebar-heading';
   sidebarHeading.textContent = 'Projects';
+  const filterBar = document.createElement('div');
+  filterBar.className = 'filter-bar';
+  filterBar.innerHTML = `
+    <button class="filter-btn" data-filter="member">I'm On</button>
+    <button class="filter-btn" data-filter="owner">I Own</button>`;
   const sidebarList = document.createElement('div');
-  sidebar.append(sidebarHeading, sidebarList);
+  sidebar.append(sidebarHeading, filterBar, sidebarList);
 
   // ── Main (documents + approvals)
   const main = document.createElement('div');
@@ -238,41 +243,60 @@ async function buildApp() {
   let allDocs = [];
   let currentProjectId = null;
   let currentProject = null;
+  let activeFilter = 'member';
 
   searchInput.addEventListener('input', () => renderDocs(allDocs, searchInput.value));
 
-  // ── Load projects
-  sidebarList.append(spinner());
-  let projects = [];
-  try {
-    projects = await api({ resource: 'projects', limit: 200 });
-    if (!Array.isArray(projects)) projects = [];
-  } catch (e) {
-    sidebarList.innerHTML = `<p class="loading error">${esc(e.message)}</p>`;
-    return;
-  }
-
-  sidebarList.innerHTML = '';
-  if (!projects.length) {
-    sidebarList.append(emptyState('No projects found.'));
-    return;
-  }
-
-  projects.forEach((p) => {
-    const st = PROJECT_STATUS[p.status] || { label: p.status, color: '#888' };
-    const item = document.createElement('div');
-    item.className = 'rt-item';
-    item.id = `proj-${p.ID}`;
-    item.innerHTML = `
-      <div class="rt-icon" style="background:${st.color}">${esc((p.name || '?').charAt(0).toUpperCase())}</div>
-      <div style="overflow:hidden">
-        <div class="rt-name">${esc(p.name)}</div>
-      </div>`;
-    item.addEventListener('click', () => selectProject(p));
-    sidebarList.append(item);
+  // ── Filter button wiring
+  filterBar.querySelectorAll('.filter-btn').forEach((btn) => {
+    if (btn.dataset.filter === activeFilter) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      if (btn.dataset.filter === activeFilter) return;
+      activeFilter = btn.dataset.filter;
+      filterBar.querySelectorAll('.filter-btn').forEach((b) => b.classList.toggle('active', b.dataset.filter === activeFilter));
+      loadProjects();
+    });
   });
 
-  if (projects.length) selectProject(projects[0]);
+  // ── Load / reload projects
+  async function loadProjects() {
+    sidebarList.innerHTML = '';
+    sidebarList.append(spinner());
+    let projects = [];
+    try {
+      const apiParams = { resource: 'projects', limit: 200 };
+      if (activeFilter === 'owner') apiParams.filter = 'owner';
+      projects = await api(apiParams);
+      if (!Array.isArray(projects)) projects = [];
+    } catch (e) {
+      sidebarList.innerHTML = `<p class="loading error">${esc(e.message)}</p>`;
+      return;
+    }
+
+    sidebarList.innerHTML = '';
+    if (!projects.length) {
+      sidebarList.append(emptyState('No projects found.'));
+      return;
+    }
+
+    projects.forEach((p) => {
+      const st = PROJECT_STATUS[p.status] || { label: p.status, color: '#888' };
+      const item = document.createElement('div');
+      item.className = 'rt-item';
+      item.id = `proj-${p.ID}`;
+      item.innerHTML = `
+        <div class="rt-icon" style="background:${st.color}">${esc((p.name || '?').charAt(0).toUpperCase())}</div>
+        <div style="overflow:hidden">
+          <div class="rt-name">${esc(p.name)}</div>
+        </div>`;
+      item.addEventListener('click', () => selectProject(p));
+      sidebarList.append(item);
+    });
+
+    if (projects.length) selectProject(projects[0]);
+  }
+
+  await loadProjects();
 
   // ── Select project → load documents
   async function selectProject(p) {
@@ -468,6 +492,10 @@ function buildDetailPanel() {
 
 const style = document.createElement('style');
 style.textContent = `
+  .filter-bar { display:flex; gap:4px; padding:8px 12px 4px; }
+  .filter-btn { flex:1; padding:4px 0; font-size:11px; font-weight:600; border:1px solid #d0d0d0; border-radius:4px; background:#fff; color:#555; cursor:pointer; font-family:inherit; transition:background .12s,color .12s; }
+  .filter-btn:hover { background:#f0f4ff; color:#1473e6; border-color:#1473e6; }
+  .filter-btn.active { background:#1473e6; color:#fff; border-color:#1473e6; }
   .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
   .badge--blue { background:#1473e622; color:#1473e6; border:1px solid #1473e644; }
   .approval-row { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid #f2f2f2; }
