@@ -368,7 +368,9 @@ async function buildApp() {
     recordsArea.append(spinner());
     try {
       const tasks = await api({ resource: 'tasks', projectId: p.ID, limit: 200 });
-      allTasks = Array.isArray(tasks) ? tasks : [];
+      allTasks = Array.isArray(tasks)
+        ? [...tasks].sort((a, b) => Number(a.taskNumber) - Number(b.taskNumber))
+        : [];
       toolbarCount.textContent = `(${allTasks.length})`;
       renderTasks(allTasks, '');
     } catch (e) {
