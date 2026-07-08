@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic' 'unsafe-inline' http: https:; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <title>Banner Block Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta property="og:title" content="Banner Block Demo">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css">
+</head>
+<body>
+  <header></header>
+  <main>
+
+    <!-- ── Page heading ──────────────────────────────────────────── -->
+    <div class="section">
+      <h1>Banner Block — Variants</h1>
+      <p>
+        Each variant below maps to a standard digital advertising size.
+        Use the block name <code>banner</code> with the variant as a second
+        class: e.g. <code>banner leader-board</code>.
+      </p>
+    </div>
+
+    <!-- ── Leader Board ──────────────────────────────────────────── -->
+    <div class="section">
+      <h2>Leader Board <small style="font-weight:400;font-size:1rem;color:#666">— 728 × 90 px</small></h2>
+      <p>Full-width horizontal strip. Image left, description and CTA right.</p>
+      <div class="banner leader-board">
+        <div>
+          <div>
+            <picture>
+              <img
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='728' height='90' viewBox='0 0 728 90'%3E%3Crect width='728' height='90' fill='%231473e6'/%3E%3Ctext x='364' y='52' font-family='Arial' font-size='22' font-weight='bold' fill='white' text-anchor='middle'%3ECAT Online Tools Promotion%3C/text%3E%3C/svg%3E"
+                alt="CAT Online Tools Promotion banner"
+                width="728"
+                height="90"
+                loading="eager"
+              >
+            </picture>
+          </div>
+          <div>
+            <p>Exclusive online discounts on genuine Caterpillar parts and equipment. Order today for fast delivery.</p>
+            <p><a href="/parts">Shop Parts Now</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Medium Rectangle ──────────────────────────────────────── -->
+    <div class="section">
+      <h2>Medium Rectangle <small style="font-weight:400;font-size:1rem;color:#666">— 300 × 250 px</small></h2>
+      <p>Compact card that does not span the full width of the page.</p>
+      <div class="banner medium-rectangle">
+        <div>
+          <div>
+            <picture>
+              <img
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='140' viewBox='0 0 300 140'%3E%3Crect width='300' height='140' fill='%231473e6'/%3E%3Ctext x='150' y='76' font-family='Arial' font-size='18' font-weight='bold' fill='white' text-anchor='middle'%3EMaintenance Kits%3C/text%3E%3C/svg%3E"
+                alt="Maintenance Kits promotion"
+                width="300"
+                height="140"
+                loading="lazy"
+              >
+            </picture>
+          </div>
+          <div>
+            <p>Keep your fleet running with genuine CAT maintenance kits.</p>
+            <p><a href="/parts/maintenance">Browse Kits</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Large Rectangle ───────────────────────────────────────── -->
+    <div class="section">
+      <h2>Large Rectangle <small style="font-weight:400;font-size:1rem;color:#666">— 970 × 250 px</small></h2>
+      <p>Full-width horizontal banner, taller than the Leader Board.</p>
+      <div class="banner large-rectangle">
+        <div>
+          <div>
+            <picture>
+              <img
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='970' height='250' viewBox='0 0 970 250'%3E%3Crect width='970' height='250' fill='%231473e6'/%3E%3Ctext x='485' y='132' font-family='Arial' font-size='28' font-weight='bold' fill='white' text-anchor='middle'%3EPower Up Your Fleet%3C/text%3E%3C/svg%3E"
+                alt="Power Up Your Fleet campaign"
+                width="970"
+                height="250"
+                loading="lazy"
+              >
+            </picture>
+          </div>
+          <div>
+            <h2>Power Up Your Fleet</h2>
+            <p>
+              Maximize uptime with the full range of Caterpillar parts, fluids,
+              and accessories. Genuine parts. Proven performance.
+            </p>
+            <p><a href="/fleet">Explore Fleet Solutions</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Ribbon ────────────────────────────────────────────────── -->
+    <div class="section">
+      <h2>Ribbon <small style="font-weight:400;font-size:1rem;color:#666">— full-width × 48 px</small></h2>
+      <p>Thin strip used for offers, voucher codes, or cookie notices.</p>
+      <div class="banner ribbon">
+        <div>
+          <div>
+            <picture>
+              <img
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%231a1a1a'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='16' font-weight='900' fill='%23ffcb00' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E"
+                alt="CAT logo"
+                width="32"
+                height="32"
+                loading="lazy"
+              >
+            </picture>
+          </div>
+          <div>
+            <p>🔧 Free shipping on orders over $150 — use code <strong>CATSHIP</strong></p>
+            <p><a href="/offers">Claim Offer</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+  <footer></footer>
+</body>
+</html>
