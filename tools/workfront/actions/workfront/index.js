@@ -81,7 +81,7 @@ async function main(params) {
         domain, token);
     } else if (resource === 'tasks' && projectId) {
       data = await wfRequest('GET',
-        `/TASK/search?projectID=${projectId}&fields=ID,name,status,percentComplete,assignedTo:name,plannedCompletionDate&$$LIMIT=${limit}`,
+        `/TASK/search?projectID=${projectId}&fields=ID,taskNumber,name,status,percentComplete,assignedTo:name,plannedCompletionDate&$$SORT=taskNumber&$$FIRST=0&$$LIMIT=${limit}`,
         domain, token);
     } else {
       return { statusCode: 400, body: JSON.stringify({ error: `Unknown resource "${resource}"` }) };

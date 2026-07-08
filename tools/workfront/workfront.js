@@ -217,6 +217,12 @@ async function buildApp() {
   const toolbarCount = document.createElement('span');
   toolbarCount.className = 'toolbar-count';
 
+  const tabBar = document.createElement('div');
+  tabBar.className = 'tab-bar';
+  tabBar.innerHTML = `
+    <button class="tab-btn active" data-tab="documents">Documents</button>
+    <button class="tab-btn" data-tab="tasks">Tasks</button>`;
+
   const searchWrap = document.createElement('div');
   searchWrap.className = 'search-wrap';
   searchWrap.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -224,10 +230,10 @@ async function buildApp() {
   </svg>`;
   const searchInput = document.createElement('input');
   searchInput.className = 'search-input';
-  searchInput.placeholder = 'Search documents…';
+  searchInput.placeholder = 'Search…';
   searchWrap.append(searchInput);
 
-  toolbar.append(toolbarTitle, toolbarCount, searchWrap);
+  toolbar.append(toolbarTitle, toolbarCount, tabBar, searchWrap);
   const recordsArea = document.createElement('div');
   recordsArea.className = 'records-area';
   recordsArea.append(emptyState('Select a project from the sidebar.'));
@@ -241,11 +247,34 @@ async function buildApp() {
 
   // ── State
   let allDocs = [];
+  let allTasks = [];
   let currentProjectId = null;
   let currentProject = null;
   let activeFilter = 'member';
+  let activeTab = 'documents';
 
-  searchInput.addEventListener('input', () => renderDocs(allDocs, searchInput.value));
+  searchInput.addEventListener('input', () => {
+    if (activeTab === 'documents') renderDocs(allDocs, searchInput.value);
+    else renderTasks(allTasks, searchInput.value);
+  });
+
+  tabBar.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.tab === activeTab) return;
+      activeTab = btn.dataset.tab;
+      tabBar.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === activeTab));
+      searchInput.value = '';
+      if (!currentProject) return;
+      if (activeTab === 'documents') {
+        toolbarCount.textContent = `(${allDocs.length})`;
+        renderDocs(allDocs, '');
+      } else {
+        toolbarCount.textContent = `(${allTasks.length})`;
+        renderTasks(allTasks, '');
+        if (!allTasks.length) loadTasks(currentProject);
+      }
+    });
+  });
 
   // ── Filter button wiring
   filterBar.querySelectorAll('.filter-btn').forEach((btn) => {
@@ -298,11 +327,12 @@ async function buildApp() {
 
   await loadProjects();
 
-  // ── Select project → load documents
+  // ── Select project → load active tab
   async function selectProject(p) {
     currentProjectId = p.ID;
     currentProject = p;
     allDocs = [];
+    allTasks = [];
     searchInput.value = '';
     detailPanel.classList.remove('open');
 
@@ -312,13 +342,35 @@ async function buildApp() {
     toolbarTitle.textContent = p.name;
     toolbarCount.textContent = '';
     recordsArea.innerHTML = '';
-    recordsArea.append(spinner());
 
+    if (activeTab === 'documents') {
+      await loadDocuments(p);
+    } else {
+      await loadTasks(p);
+    }
+  }
+
+  async function loadDocuments(p) {
+    recordsArea.innerHTML = '';
+    recordsArea.append(spinner());
     try {
       const docs = await api({ resource: 'documents', projectId: p.ID, limit: 200 });
       allDocs = Array.isArray(docs) ? docs : [];
       toolbarCount.textContent = `(${allDocs.length})`;
       renderDocs(allDocs, '');
+    } catch (e) {
+      recordsArea.innerHTML = `<p class="loading error">Error: ${esc(e.message)}</p>`;
+    }
+  }
+
+  async function loadTasks(p) {
+    recordsArea.innerHTML = '';
+    recordsArea.append(spinner());
+    try {
+      const tasks = await api({ resource: 'tasks', projectId: p.ID, limit: 200 });
+      allTasks = Array.isArray(tasks) ? tasks : [];
+      toolbarCount.textContent = `(${allTasks.length})`;
+      renderTasks(allTasks, '');
     } catch (e) {
       recordsArea.innerHTML = `<p class="loading error">Error: ${esc(e.message)}</p>`;
     }
@@ -372,6 +424,66 @@ async function buildApp() {
       }
 
       tr.addEventListener('click', () => openDetail(doc));
+      tbody.append(tr);
+    });
+
+    table.append(tbody);
+    wrap.append(table);
+    recordsArea.append(wrap);
+  }
+
+  // ── Render tasks table
+  const TASK_STATUS = {
+    NEW:  { label: 'New',         color: '#1473e6' },
+    INP:  { label: 'In Progress', color: '#e68619' },
+    CPL:  { label: 'Complete',    color: '#2d9d78' },
+    ON_HOLD: { label: 'On Hold',  color: '#888' },
+  };
+
+  function renderTasks(tasks, q) {
+    const filtered = q
+      ? tasks.filter((t) => (t.name || '').toLowerCase().includes(q.toLowerCase()))
+      : tasks;
+
+    recordsArea.innerHTML = '';
+    if (!filtered.length) {
+      recordsArea.append(emptyState(q ? 'No tasks match.' : 'No tasks in this project.'));
+      return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'records-table-wrap';
+
+    const table = document.createElement('table');
+    table.className = 'records-table';
+    table.innerHTML = `<thead><tr>
+      <th style="width:52px">#</th>
+      <th>Task Name</th>
+      <th>Assigned To</th>
+      <th>Due Date</th>
+      <th>% Done</th>
+      <th>Status</th>
+    </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    filtered.forEach((task) => {
+      const st = TASK_STATUS[task.status] || { label: task.status || '—', color: '#888' };
+      const pct = task.percentComplete != null ? `${task.percentComplete}%` : '—';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color:#888;font-size:12px;font-weight:600">${esc(task.taskNumber || '—')}</td>
+        <td class="name-cell">${esc(task.name || '(Untitled)')}</td>
+        <td>${esc(task.assignedTo?.name || '—')}</td>
+        <td>${esc(formatDate(task.plannedCompletionDate))}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="flex:1;height:4px;background:#eee;border-radius:2px;min-width:40px">
+              <div style="width:${task.percentComplete || 0}%;height:100%;background:${st.color};border-radius:2px"></div>
+            </div>
+            <span style="font-size:11px;color:#666;white-space:nowrap">${pct}</span>
+          </div>
+        </td>
+        <td><span class="badge" style="background:${st.color}22;color:${st.color};border:1px solid ${st.color}44">${esc(st.label)}</span></td>`;
       tbody.append(tr);
     });
 
@@ -492,6 +604,10 @@ function buildDetailPanel() {
 
 const style = document.createElement('style');
 style.textContent = `
+  .tab-bar { display:flex; gap:2px; margin:0 4px; }
+  .tab-btn { padding:3px 12px; font-size:12px; font-weight:600; border:1px solid transparent; border-bottom:none; border-radius:4px 4px 0 0; background:none; color:#888; cursor:pointer; font-family:inherit; }
+  .tab-btn:hover { color:#1473e6; }
+  .tab-btn.active { background:#fff; color:#1473e6; border-color:#e0e0e0; border-bottom-color:#fff; }
   .filter-bar { display:flex; gap:4px; padding:8px 12px 4px; }
   .filter-btn { flex:1; padding:4px 0; font-size:11px; font-weight:600; border:1px solid #d0d0d0; border-radius:4px; background:#fff; color:#555; cursor:pointer; font-family:inherit; transition:background .12s,color .12s; }
   .filter-btn:hover { background:#f0f4ff; color:#1473e6; border-color:#1473e6; }
