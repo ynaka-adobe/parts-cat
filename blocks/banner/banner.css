@@ -199,10 +199,14 @@
 /* ── Ribbon (full-width × ~48 px) ─────────────────────────────── */
 /*  Thin notification/offer strip; icon + text + CTA all in one row */
 
-.banner-wrapper.banner-ribbon-wrapper,
-.banner.ribbon-wrapper {
+/* Break the ribbon out of the section's max-width container so it spans
+   edge-to-edge. The variant class (ribbon) is on the block, not the wrapper,
+   so match the wrapper/container that contains a ribbon. */
+.banner-container:has(.banner.ribbon),
+.banner-wrapper:has(> .banner.ribbon) {
   max-width: 100% !important;
   padding: 0 !important;
+  margin: 0;
 }
 
 .banner.ribbon {
