@@ -155,7 +155,9 @@ function showToast(msg, type = 'success') {
 // ── Main app ──────────────────────────────────────────────────────────────────
 
 async function init() {
-  daSdk ||= await Promise.race([DA_SDK, new Promise((r) => setTimeout(() => r(null), 1500))]);
+  daSdk ||= await Promise.race([DA_SDK, new Promise((r) => setTimeout(() => r(null), 4000))]);
+  // eslint-disable-next-line no-console
+  console.log('[approval] DA SDK:', daSdk, 'context:', daSdk?.context);
   const token = await ensureToken();
   if (!token) { renderConnect(); return; }
   renderApp();
@@ -164,17 +166,22 @@ async function init() {
 // ── Publish the current DA page (preview → live) ────────────────────────────────
 
 async function publishCurrentPage() {
-  const ctx = daSdk?.context || daSdk;
   const daFetch = daSdk?.actions?.daFetch;
-  if (!ctx?.org || !ctx?.repo || !daFetch) {
-    throw new Error('No DA page context — open this tool inside DA.');
+  if (!daFetch) {
+    throw new Error(daSdk ? 'DA SDK ready but no daFetch' : 'DA SDK not received (opened outside DA?)');
+  }
+  const ctx = daSdk.context || daSdk;
+  const org = ctx?.org;
+  const repo = ctx?.repo || ctx?.site;
+  if (!org || !repo) {
+    throw new Error(`No page context — keys: ${Object.keys(ctx || {}).join(', ') || 'none'}`);
   }
   const ref = ctx.ref || 'main';
-  let path = (ctx.path || '').replace(/\.html$/, '');
+  let path = (ctx.path || ctx.pathname || '').replace(/\.html$/, '');
   if (!path.startsWith('/')) path = `/${path}`;
 
   // Live pulls from preview, so preview must be updated first (same as Sidekick).
-  const resource = `${ctx.org}/${ctx.repo}/${ref}${path}`;
+  const resource = `${org}/${repo}/${ref}${path}`;
   const preview = await daFetch(`${AEM_ADMIN}/preview/${resource}`, { method: 'POST' });
   if (!preview.ok) throw new Error(`Preview failed (${preview.status})`);
   const live = await daFetch(`${AEM_ADMIN}/live/${resource}`, { method: 'POST' });
