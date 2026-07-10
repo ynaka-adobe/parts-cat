@@ -209,6 +209,16 @@
   margin: 0;
 }
 
+/* A ribbon delivered through an Adobe Target offer slot is nested inside
+   .target-offer (and its 1200px wrapper). Release those too so it stays
+   edge-to-edge. */
+.target-offer-wrapper:has(.banner.ribbon),
+.target-offer:has(.banner.ribbon) {
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0;
+}
+
 .banner.ribbon {
   height: 48px;
   border-radius: 0;

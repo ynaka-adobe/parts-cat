@@ -1,4 +1,4 @@
-import { getMetadata } from './aem.js';
+import { getMetadata, decorateBlock, loadBlock } from './aem.js';
 
 /** AEM Universal Editor iframe; skip Target so at.js does not fight UE/CSP. */
 export function isUePreviewHost(hostname = window.location.hostname) {
@@ -18,6 +18,24 @@ export function isHomePage(pathname = window.location.pathname) {
 function logTargetError(e, el) {
   // eslint-disable-next-line no-console
   console.error('[target]', e, el);
+}
+
+/**
+ * EDS block decoration only runs during initial page load. Markup that Target
+ * injects afterwards into a `.target-offer` slot keeps its raw authored structure
+ * (plain table/cell divs), so blocks render unstyled. Re-run block decoration on
+ * any block Target dropped into a target-offer so it gets its expected structure,
+ * CSS, and JS behaviour.
+ */
+export async function decorateTargetOfferBlocks() {
+  // Offer content is authored EDS markup: .target-offer > div (section) > div.block
+  const blocks = document.querySelectorAll(
+    '.target-offer > div > div[class]:not([data-block-status])',
+  );
+  await Promise.all([...blocks].map((block) => {
+    decorateBlock(block);
+    return loadBlock(block);
+  }));
 }
 
 export async function loadTarget() {
@@ -54,6 +72,7 @@ export async function loadTarget() {
         if (el) el.outerHTML = content;
       });
     }
+    await decorateTargetOfferBlocks();
   } catch (e) {
     logTargetError(e, document.body);
   }
@@ -94,7 +113,7 @@ export async function applyTargetHeroMboxIfConfigured() {
           return;
         }
         t.applyOffer({ mbox, selector: match.selector, offer: offers });
-        resolve();
+        decorateTargetOfferBlocks().finally(resolve);
       },
       error: resolve,
     });
