@@ -204,8 +204,13 @@ window.__dmRender__ = (src, alt) => {
 function buildHeroBlock(main) {
   const h1 = main.querySelector('h1');
   const picture = main.querySelector('picture');
+  // Only auto-block loose default content. If the picture/h1 already live inside
+  // an authored block (e.g. banner, cards), leave them alone — otherwise the hero
+  // cannibalises that block's content. At this point sections aren't decorated yet,
+  // so any classed div ancestor is a block.
+  const insideBlock = picture?.closest('div[class]') || h1?.closest('div[class]');
   // eslint-disable-next-line no-bitwise
-  if (h1 && picture && (h1.compareDocumentPosition(picture) & Node.DOCUMENT_POSITION_PRECEDING)) {
+  if (h1 && picture && !insideBlock && (h1.compareDocumentPosition(picture) & Node.DOCUMENT_POSITION_PRECEDING)) {
     const section = document.createElement('div');
     section.append(buildBlock('hero', { elems: [picture, h1] }));
     main.prepend(section);
