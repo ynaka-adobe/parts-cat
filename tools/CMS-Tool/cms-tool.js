@@ -868,6 +868,13 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
         scoped.forEach((o) => offerSelect.append(new Option(o.name, o.id)));
         offerSelect.disabled = false;
         if (!scoped.length) offerSelect.innerHTML = `<option value="">No "${prefix}…" offers found</option>`;
+
+        // Pre-select the offer matching "<type>-<variant>" (e.g. banner + ribbon
+        // → banner-ribbon). Normalise so "leader-board" also matches "banner-leaderboard".
+        const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const want = norm(`${campaignType}-${variant}`);
+        const match = scoped.find((o) => norm(o.name) === want);
+        if (match) offerSelect.value = String(match.id);
       } catch {
         offerSelect.innerHTML = '<option value="">Failed to load offers</option>';
       }
