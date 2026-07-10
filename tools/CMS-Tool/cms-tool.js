@@ -467,60 +467,33 @@ function parseCampaignInfo(activity) {
 }
 
 // ── Block HTML builder ─────────────────────────────────────────────────────────
-// Produces the DA table markup that EDS decorates into the named block.
-// The mbox is embedded as a metadata row so banner.js can set data-mbox.
+// The campaign content is delivered by Adobe Target into the .target-offer slot,
+// so the page only needs a target-offer placeholder plus page Metadata wiring the
+// page to the mbox. Target injects the offer (banner, hero, …) at runtime.
 
-function buildBlockHTML(campaignType, variant, campaignName, mbox) {
-  const row = (cells) => `<tr>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`;
-  const table = (header, contentRows) => {
-    const cols = Math.max(...contentRows.map((r) => r.length), 1);
-    const mboxRow = `<tr><td>Mbox</td><td>${esc(mbox)}</td></tr>`;
-    return `<table>`
-      + `<thead><tr><th colspan="${cols}">${header}</th></tr></thead>`
-      + `<tbody>${contentRows.map(row).join('')}${mboxRow}</tbody>`
-      + `</table>`;
-  };
+function buildInsertionHTML(mbox, campaignName) {
+  const targetOffer = '<table><thead><tr><th>target-offer</th></tr></thead>'
+    + '<tbody><tr><td></td></tr></tbody></table>';
 
-  if (campaignType === 'banner') {
-    return table(`Banner (${variant})`, [
-      ['<p>[Add banner image]</p>', `<p>${esc(campaignName)}</p><p>[Add description]</p><p><a href="#">Learn More</a></p>`],
-    ]);
-  }
+  const metaRows = [
+    ['Experiment', campaignName],
+    ['target', 'on'],
+    ['target-mbox-hero', mbox],
+    ['target-mbox-hero-selector', '.target-offer'],
+    ['target-at-js', '/deps/at/vendor-at.js'],
+  ];
+  const metadata = '<table><thead><tr><th colspan="2">Metadata</th></tr></thead><tbody>'
+    + metaRows.map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('')
+    + '</tbody></table>';
 
-  if (campaignType === 'landing') {
-    if (variant === 'split') {
-      return table('Columns', [
-        ['<p>[Add image]</p>', `<h2>${esc(campaignName)}</h2><p>[Add description]</p><p><a href="#">Shop Now</a></p>`],
-      ]);
-    }
-    if (variant === 'cards') {
-      return `<h2>${esc(campaignName)}</h2>`
-        + table('Cards', [
-          ['<p>[Add image]</p><p>[Card 1 title]</p><p>[Description]</p>',
-           '<p>[Add image]</p><p>[Card 2 title]</p><p>[Description]</p>',
-           '<p>[Add image]</p><p>[Card 3 title]</p><p>[Description]</p>'],
-        ]);
-    }
-    // hero
-    return table('Hero', [['<p>[Add hero image]</p>']])
-      + `<h2>${esc(campaignName)}</h2><p>[Add campaign description]</p><p><a href="#">Shop Now</a></p>`;
-  }
-
-  if (campaignType === 'specials') {
-    const bv = variant === 'flash-sale' ? 'leader-board' : variant === 'seasonal' ? 'large-rectangle' : 'medium-rectangle';
-    return table(`Banner (${bv})`, [
-      ['<p>[Add image]</p>', `<h3>${esc(campaignName)}</h3><p>[Add offer details]</p><p><a href="#">Shop Now</a></p>`],
-    ]);
-  }
-
-  return `<p>${esc(campaignName)}</p>`;
+  return `${targetOffer}${metadata}`;
 }
 
 // ── Insert campaign block into DA editor ───────────────────────────────────────
 
 async function insertCampaignBlock(activity, sdk) {
-  const { campaignType, variant, mbox } = parseCampaignInfo(activity);
-  const blockHTML = buildBlockHTML(campaignType, variant, activity.name, mbox);
+  const { mbox } = parseCampaignInfo(activity);
+  const blockHTML = buildInsertionHTML(mbox, activity.name);
   if (sdk?.actions?.sendHTML) {
     sdk.actions.sendHTML(blockHTML);
     showToast(`✓ "${activity.name}" inserted — mbox: ${mbox}`);
@@ -882,14 +855,18 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
     const offerSelect = modal.querySelector('#nc-offer');
     nameInput.focus();
 
-    // Populate the Target offer picker
+    // Populate the Target offer picker — scoped to the campaign type. Target's
+    // offers API exposes no folder/path, so we match offers named "<type>-*"
+    // (e.g. banner campaigns only see "banner-leaderboard", "banner-ribbon", …).
     (async () => {
       try {
         const offers = await fetchTargetOffers();
+        const prefix = `${campaignType}-`;
+        const scoped = offers.filter((o) => o.name?.toLowerCase().startsWith(prefix));
         offerSelect.innerHTML = '<option value="">— Select an offer —</option>';
-        offers.forEach((o) => offerSelect.append(new Option(o.name, o.id)));
+        scoped.forEach((o) => offerSelect.append(new Option(o.name, o.id)));
         offerSelect.disabled = false;
-        if (!offers.length) offerSelect.innerHTML = '<option value="">No offers found</option>';
+        if (!scoped.length) offerSelect.innerHTML = `<option value="">No "${prefix}…" offers found</option>`;
       } catch {
         offerSelect.innerHTML = '<option value="">Failed to load offers</option>';
       }
@@ -913,14 +890,15 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
       const mbox = `${campaignType}-${variant}`;
 
       try {
-        // 1. Insert block table at the DA editor cursor position
-        const blockHTML = buildBlockHTML(campaignType, variant, name);
+        // 1. Create the Target activity with the variant-derived mbox
+        const result = await createTargetActivity({ name, mbox, offerId, campaignType, variant });
+
+        // 2. On success, insert the target-offer placeholder + Metadata wiring
+        //    at the DA editor cursor position (Target injects the offer at runtime)
+        const blockHTML = buildInsertionHTML(mbox, name);
         if (sdk?.actions?.sendHTML) {
           await sdk.actions.sendHTML(blockHTML);
         }
-
-        // 2. Create Target activity with the variant-derived mbox
-        const result = await createTargetActivity({ name, mbox, offerId, campaignType, variant });
 
         close();
         showToast(`✓ "${name}" created — mbox: ${mbox}`);
