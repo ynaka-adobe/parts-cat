@@ -193,7 +193,7 @@ function renderConnect() {
   document.body.innerHTML = '';
   const shell = el('div', 'ap-shell');
   const header = el('div', 'ap-header');
-  header.innerHTML = `<span class="ap-logo">CAT</span><span class="ap-title">Mark Task Complete</span>`;
+  header.innerHTML = `<span class="ap-logo">CAT</span><span class="ap-title">Mark Task Complete (1)</span>`;
   const body = el('div', 'ap-connect');
   body.innerHTML = `<p>Connect your Workfront account to mark tasks as complete.</p>`;
   const btn = el('button', 'btn-connect', 'Connect Workfront');
@@ -225,7 +225,7 @@ async function renderApp() {
   const shell = el('div', 'ap-shell');
 
   const header = el('div', 'ap-header');
-  header.innerHTML = `<span class="ap-logo">CAT</span><span class="ap-title">Mark Task Complete</span>`;
+  header.innerHTML = `<span class="ap-logo">CAT</span><span class="ap-title">Mark Task Complete (1)</span>`;
 
   const body = el('div', 'ap-body');
 
