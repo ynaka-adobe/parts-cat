@@ -1,7 +1,14 @@
+import DA_SDK from 'https://da.live/nx/utils/sdk.js';
+
 const RUNTIME_URL = 'https://3635370-144scarletlobster.adobeioruntime.net/api/v1/web/default/workfront-planning';
 const RUNTIME_ORIGIN = new URL(RUNTIME_URL).origin;
 const WF_DOMAIN = 'aemshowcase2.my.workfront.com';
 const WF_CLIENT_ID = '56e219a0a1eeae8feb55c444e3d8a8b6';
+const AEM_ADMIN = 'https://admin.hlx.page';
+
+// DA SDK — provides the current page context + an authenticated daFetch. Resolved
+// once at load with a timeout so the tool still works if opened outside DA.
+let daSdk = null;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -148,9 +155,31 @@ function showToast(msg, type = 'success') {
 // ── Main app ──────────────────────────────────────────────────────────────────
 
 async function init() {
+  daSdk ||= await Promise.race([DA_SDK, new Promise((r) => setTimeout(() => r(null), 1500))]);
   const token = await ensureToken();
   if (!token) { renderConnect(); return; }
   renderApp();
+}
+
+// ── Publish the current DA page (preview → live) ────────────────────────────────
+
+async function publishCurrentPage() {
+  const ctx = daSdk?.context || daSdk;
+  const daFetch = daSdk?.actions?.daFetch;
+  if (!ctx?.org || !ctx?.repo || !daFetch) {
+    throw new Error('No DA page context — open this tool inside DA.');
+  }
+  const ref = ctx.ref || 'main';
+  let path = (ctx.path || '').replace(/\.html$/, '');
+  if (!path.startsWith('/')) path = `/${path}`;
+
+  // Live pulls from preview, so preview must be updated first (same as Sidekick).
+  const resource = `${ctx.org}/${ctx.repo}/${ref}${path}`;
+  const preview = await daFetch(`${AEM_ADMIN}/preview/${resource}`, { method: 'POST' });
+  if (!preview.ok) throw new Error(`Preview failed (${preview.status})`);
+  const live = await daFetch(`${AEM_ADMIN}/live/${resource}`, { method: 'POST' });
+  if (!live.ok) throw new Error(`Publish failed (${live.status})`);
+  return path;
 }
 
 function renderConnect() {
@@ -290,7 +319,14 @@ function renderTasks(tasks, container) {
           tag.textContent = 'Complete';
           tag.className = 'task-status-tag tag-cpl';
           btn.remove();
-          showToast(`"${task.name}" marked complete`);
+
+          // Publish the page currently open in DA
+          try {
+            const path = await publishCurrentPage();
+            showToast(`"${task.name}" complete — published ${path}`);
+          } catch (err) {
+            showToast(`Task complete, but publish failed: ${err.message}`, 'error');
+          }
         } catch {
           btn.disabled = false;
           btn.textContent = 'Complete';
