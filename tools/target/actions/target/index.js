@@ -81,6 +81,13 @@ async function main(params) {
 
       const { name, mbox = 'target-global-mbox', offerId: oId, audienceId } = activityDef;
 
+      if (!Number.isFinite(Number(oId))) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: 'A valid offerId is required to create an XT activity' }),
+        };
+      }
+
       const experience = {
         experienceLocalId: 0,
         name: 'Experience A',

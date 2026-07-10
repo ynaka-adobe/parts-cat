@@ -44,6 +44,11 @@ async function fetchTargetActivities() {
   return json.activities ?? [];
 }
 
+async function fetchTargetOffers() {
+  const json = await targetFetch({ resource: 'offers' });
+  return json.offers ?? [];
+}
+
 async function fetchTargetReporting(activityId) {
   try {
     const json = await targetFetch({ resource: 'reporting', activityId });
@@ -852,6 +857,12 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
           <label class="modal-label">Target Mbox</label>
           <div style="font-size:13px;color:#555;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:4px;padding:8px 12px;font-family:monospace">${campaignType}-${variant}</div>
         </div>
+        <div class="modal-field">
+          <label class="modal-label">Target Offer <span class="modal-required">*</span></label>
+          <select class="modal-select" id="nc-offer" disabled>
+            <option value="">Loading offers…</option>
+          </select>
+        </div>
         ${wfProjects && wfProjects.length ? `
         <div class="modal-field">
           <label class="modal-label">Workfront Project (optional)</label>
@@ -868,7 +879,21 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
 
     const nameInput = modal.querySelector('#nc-name');
     const submitBtn = modal.querySelector('#nc-submit');
+    const offerSelect = modal.querySelector('#nc-offer');
     nameInput.focus();
+
+    // Populate the Target offer picker
+    (async () => {
+      try {
+        const offers = await fetchTargetOffers();
+        offerSelect.innerHTML = '<option value="">— Select an offer —</option>';
+        offers.forEach((o) => offerSelect.append(new Option(o.name, o.id)));
+        offerSelect.disabled = false;
+        if (!offers.length) offerSelect.innerHTML = '<option value="">No offers found</option>';
+      } catch {
+        offerSelect.innerHTML = '<option value="">Failed to load offers</option>';
+      }
+    })();
 
     modal.querySelector('#nc-back').addEventListener('click', () => showVariantPicker(campaignType));
 
@@ -876,6 +901,10 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
       const name = nameInput.value.trim();
       if (!name) { nameInput.classList.add('error'); nameInput.focus(); return; }
       nameInput.classList.remove('error');
+
+      const offerId = offerSelect.value;
+      if (!offerId) { offerSelect.classList.add('error'); offerSelect.focus(); return; }
+      offerSelect.classList.remove('error');
 
       submitBtn.disabled = true;
       submitBtn.textContent = 'Creating…';
@@ -891,7 +920,7 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
         }
 
         // 2. Create Target activity with the variant-derived mbox
-        const result = await createTargetActivity({ name, mbox, campaignType, variant });
+        const result = await createTargetActivity({ name, mbox, offerId, campaignType, variant });
 
         close();
         showToast(`✓ "${name}" created — mbox: ${mbox}`);
