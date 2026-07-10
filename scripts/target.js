@@ -20,22 +20,37 @@ function logTargetError(e, el) {
   console.error('[target]', e, el);
 }
 
-/**
- * EDS block decoration only runs during initial page load. Markup that Target
- * injects afterwards into a `.target-offer` slot keeps its raw authored structure
- * (plain table/cell divs), so blocks render unstyled. Re-run block decoration on
- * any block Target dropped into a target-offer so it gets its expected structure,
- * CSS, and JS behaviour.
- */
-export async function decorateTargetOfferBlocks() {
-  // Offer content is authored EDS markup: .target-offer > div (section) > div.block
-  const blocks = document.querySelectorAll(
-    '.target-offer > div > div[class]:not([data-block-status])',
-  );
-  await Promise.all([...blocks].map((block) => {
+// Offer content is authored EDS markup: .target-offer > div (section) > div.block
+const TARGET_OFFER_BLOCK_SEL = '.target-offer > div > div[class]:not([data-block-status])';
+
+/** Decorate + load any not-yet-decorated blocks currently inside a target-offer. */
+function decorateInjectedBlocks() {
+  return Promise.all([...document.querySelectorAll(TARGET_OFFER_BLOCK_SEL)].map((block) => {
     decorateBlock(block);
     return loadBlock(block);
   }));
+}
+
+let targetOfferObserver = null;
+
+/**
+ * EDS block decoration only runs during initial page load. Markup that Target
+ * injects afterwards into a `.target-offer` slot keeps its raw authored structure
+ * (plain table/cell divs), so blocks render unstyled. Decorate blocks Target
+ * dropped in so they get their expected structure, CSS, and JS behaviour.
+ *
+ * at.js applies offers asynchronously (and may re-apply), so besides an immediate
+ * pass we watch the DOM and decorate blocks as soon as they are injected.
+ */
+export async function decorateTargetOfferBlocks() {
+  await decorateInjectedBlocks();
+
+  if (targetOfferObserver) return;
+  targetOfferObserver = new MutationObserver(() => {
+    // Only undecorated blocks match the selector, so this is a no-op once decorated.
+    if (document.querySelector(TARGET_OFFER_BLOCK_SEL)) decorateInjectedBlocks();
+  });
+  targetOfferObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 export async function loadTarget() {
