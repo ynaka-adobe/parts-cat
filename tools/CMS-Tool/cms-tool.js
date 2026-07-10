@@ -827,8 +827,8 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
           <textarea class="modal-textarea" id="nc-desc" placeholder="Describe the campaign goal…"></textarea>
         </div>
         <div class="modal-field">
-          <label class="modal-label">Target Mbox</label>
-          <div style="font-size:13px;color:#555;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:4px;padding:8px 12px;font-family:monospace">${campaignType}-${variant}</div>
+          <label class="modal-label">Target Mbox <span class="modal-required">*</span></label>
+          <input class="modal-input" id="nc-mbox" value="${esc(`${campaignType}-${variant}`)}" style="font-family:monospace" autocomplete="off">
         </div>
         <div class="modal-field">
           <label class="modal-label">Target Offer <span class="modal-required">*</span></label>
@@ -853,6 +853,7 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
     const nameInput = modal.querySelector('#nc-name');
     const submitBtn = modal.querySelector('#nc-submit');
     const offerSelect = modal.querySelector('#nc-offer');
+    const mboxInput = modal.querySelector('#nc-mbox');
     nameInput.focus();
 
     // Populate the Target offer picker — scoped to the campaign type. Target's
@@ -883,11 +884,13 @@ async function showNewCampaignModal(wfProjects, sdk, onCreated) {
       if (!offerId) { offerSelect.classList.add('error'); offerSelect.focus(); return; }
       offerSelect.classList.remove('error');
 
+      // Pre-filled with "<type>-<variant>" but editable so the mbox can be made unique
+      const mbox = mboxInput.value.trim();
+      if (!mbox) { mboxInput.classList.add('error'); mboxInput.focus(); return; }
+      mboxInput.classList.remove('error');
+
       submitBtn.disabled = true;
       submitBtn.textContent = 'Creating…';
-
-      // Derive mbox from campaign type + variant (e.g. "banner-leader-board")
-      const mbox = `${campaignType}-${variant}`;
 
       try {
         // 1. Create the Target activity with the variant-derived mbox
